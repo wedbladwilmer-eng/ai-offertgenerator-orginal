@@ -1,6 +1,7 @@
 import { ProductSearch } from '@/components/ProductSearch';
 import { ProductDisplay } from '@/components/ProductDisplay';
 import { QuoteList } from '@/components/QuoteList';
+import ProductMockup from '@/components/ui/ProductMockup';
 import { useProducts } from '@/hooks/useProducts';
 
 const Index = () => {
@@ -37,10 +38,20 @@ const Index = () => {
             />
             
             {product && (
-              <ProductDisplay 
-                product={product}
-                onAddToQuote={addToQuote}
-              />
+              <>
+                <ProductDisplay 
+                  product={product}
+                  onAddToQuote={addToQuote}
+                />
+                
+                <ProductMockup 
+                  product={{
+                    id: product.id,
+                    name: product.name,
+                    image_url: product.image_url
+                  }}
+                />
+              </>
             )}
           </div>
 
