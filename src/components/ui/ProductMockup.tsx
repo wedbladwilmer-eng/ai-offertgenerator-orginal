@@ -24,41 +24,15 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
-  // Function to determine logo position based on product category
-  const getLogoPosition = (productWidth: number, productHeight: number, category?: string) => {
-    const logoSize = productWidth * 0.12; // 12% of product width
+  // Function to get logo position (left chest from wearer's perspective)
+  const getLogoPosition = (productWidth: number, productHeight: number) => {
+    const logoWidth = productWidth * 0.12; // 12% of product width
     
-    switch (category?.toLowerCase()) {
-      case 'keps':
-      case 'mössa':
-        // Center position for hats
-        return {
-          x: productWidth * 0.45, // 45% from left (centered)
-          y: productHeight * 0.25, // 25% from top
-          width: logoSize,
-        };
-      
-      case 'byxor':
-      case 'shorts':
-        // Left leg above knee for pants/shorts
-        return {
-          x: productWidth * 0.15, // 15% from left
-          y: productHeight * 0.55, // 55% from top
-          width: logoSize * 0.8, // Smaller for leg position
-        };
-      
-      case 'hoodie':
-      case 'tröja':
-      case 't-shirt':
-      case 'väst':
-      default:
-        // Left chest position (default)
-        return {
-          x: productWidth * 0.25, // 25% from left
-          y: productHeight * 0.35, // 35% from top
-          width: logoSize,
-        };
-    }
+    return {
+      x: productWidth * 0.65, // 65% from left (wearer's left chest)
+      y: productHeight * 0.25, // 25% from top
+      width: logoWidth,
+    };
   };
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,8 +85,8 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
         logoImg.src = logoUrl;
       });
 
-      // Get logo position based on product category
-      const logoPosition = getLogoPosition(productImg.width, productImg.height, product.category);
+      // Get logo position (left chest from wearer's perspective)
+      const logoPosition = getLogoPosition(productImg.width, productImg.height);
       const logoHeight = (logoImg.height / logoImg.width) * logoPosition.width;
 
       ctx.drawImage(logoImg, logoPosition.x, logoPosition.y, logoPosition.width, logoHeight);
@@ -210,7 +184,7 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
               disabled={isUploading}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Logotypen placeras automatiskt baserat på produktkategori
+              Logotypen placeras på vänster bröst (från bärarens perspektiv)
             </p>
           </div>
 

@@ -48,7 +48,9 @@ const Index = () => {
                   product={{
                     id: product.id,
                     name: product.name,
-                    image_url: product.image_url
+                    image_url: product.image_url,
+                    price_ex_vat: product.price_ex_vat,
+                    category: product.category
                   }}
                 />
               </>
