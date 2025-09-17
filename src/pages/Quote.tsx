@@ -11,7 +11,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generatePDF } from '@/utils/pdfGenerator';
 import { Product } from '@/hooks/useProducts';
-import kostaNadaLogo from '@/assets/kosta-nada-company-logo.png';
 import kostaNadaProfilLogo from '@/assets/kosta-nada-profil-logo.png';
 
 const Quote = () => {
@@ -22,9 +21,11 @@ const Quote = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [mockupUrl, setMockupUrl] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
-  const [margin, setMargin] = useState('2'); // Default 1:2 ratio
   const [customerName, setCustomerName] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Fixed margin ratio of 1:2 for clean customer view
+  const margin = '2';
 
   const productId = searchParams.get('productId');
   const mockupParam = searchParams.get('mockup');
@@ -233,33 +234,15 @@ const Quote = () => {
                     </div>
 
                     {/* Controls */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="quantity">Antal</Label>
-                        <Input
-                          id="quantity"
-                          type="number"
-                          min="1"
-                          value={quantity}
-                          onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="margin">Marginal</Label>
-                        <Select value={margin} onValueChange={setMargin}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="2">1:2</SelectItem>
-                            <SelectItem value="2.5">1:2.5</SelectItem>
-                            <SelectItem value="3">1:3</SelectItem>
-                            <SelectItem value="3.5">1:3.5</SelectItem>
-                            <SelectItem value="4">1:4</SelectItem>
-                            <SelectItem value="5">1:5</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="max-w-xs">
+                      <Label htmlFor="quantity">Antal</Label>
+                      <Input
+                        id="quantity"
+                        type="number"
+                        min="1"
+                        value={quantity}
+                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                      />
                     </div>
                   </div>
                 </div>
