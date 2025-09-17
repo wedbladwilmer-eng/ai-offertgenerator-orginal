@@ -2,9 +2,14 @@ import { ProductSearch } from '@/components/ProductSearch';
 import { ProductDisplay } from '@/components/ProductDisplay';
 import { QuoteList } from '@/components/QuoteList';
 import ProductMockup from '@/components/ui/ProductMockup';
+import MockupPreview from '@/components/MockupPreview';
 import { useProducts } from '@/hooks/useProducts';
+import { useState } from 'react';
 
 const Index = () => {
+  const [mockupPreviewUrl, setMockupPreviewUrl] = useState<string | null>(null);
+  const [mockupUrl, setMockupUrl] = useState<string | null>(null);
+  
   const {
     isLoading,
     product,
@@ -17,6 +22,11 @@ const Index = () => {
     getQuoteTotal,
     getQuoteTotalWithVat,
   } = useProducts();
+
+  const handlePreviewUpdate = (previewUrl: string | null, finalMockupUrl: string | null) => {
+    setMockupPreviewUrl(previewUrl);
+    setMockupUrl(finalMockupUrl);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,12 +62,13 @@ const Index = () => {
                     price_ex_vat: product.price_ex_vat,
                     category: product.category
                   }}
+                  onPreviewUpdate={handlePreviewUpdate}
                 />
               </>
             )}
           </div>
 
-          <div>
+          <div className="space-y-6">
             <QuoteList
               quote={quote}
               onUpdateItem={updateQuoteItem}
@@ -65,6 +76,12 @@ const Index = () => {
               onClearQuote={clearQuote}
               total={getQuoteTotal()}
               totalWithVat={getQuoteTotalWithVat()}
+            />
+            
+            <MockupPreview
+              product={product}
+              previewUrl={mockupPreviewUrl}
+              mockupUrl={mockupUrl}
             />
           </div>
         </div>

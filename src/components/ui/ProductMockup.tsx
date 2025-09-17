@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,9 +15,10 @@ interface Product {
 
 interface ProductMockupProps {
   product: Product;
+  onPreviewUpdate?: (previewUrl: string | null, mockupUrl: string | null) => void;
 }
 
-const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
+const ProductMockup: React.FC<ProductMockupProps> = ({ product, onPreviewUpdate }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [mockupUrl, setMockupUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -26,6 +27,10 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
   const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    onPreviewUpdate?.(previewUrl, mockupUrl);
+  }, [previewUrl, mockupUrl, onPreviewUpdate]);
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -261,34 +266,6 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
           )}
         </CardContent>
       </Card>
-
-      {(previewUrl || mockupUrl) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Mockup-förhandsgranskning</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium mb-2">Originalprodukt</h4>
-                <img
-                  src={product.image_url || '/placeholder.svg'}
-                  alt={product.name}
-                  className="max-w-full h-auto rounded border bg-white"
-                />
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">Med logotyp</h4>
-                <img
-                  src={previewUrl || mockupUrl}
-                  alt="Produktmockup med logotyp"
-                  className="max-w-full h-auto rounded border bg-white"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
