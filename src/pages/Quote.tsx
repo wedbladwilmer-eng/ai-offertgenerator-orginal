@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generatePDF } from '@/utils/pdfGenerator';
 import { Product } from '@/hooks/useProducts';
-import kostaNadaLogo from '@/assets/kosta-nada-logo.jpg';
+import kostaNadaLogo from '@/assets/kosta-nada-company-logo.png';
 
 const Quote = () => {
   const [searchParams] = useSearchParams();
@@ -135,13 +135,9 @@ const Quote = () => {
             <div className="flex items-center gap-4">
               <img 
                 src={kostaNadaLogo} 
-                alt="Kosta Nada Profil AB" 
-                className="h-12 w-12 object-contain"
+                alt="Kosta Nada New Wave Profile" 
+                className="h-16 w-auto object-contain"
               />
-              <div>
-                <h1 className="text-xl font-bold text-foreground">Kosta Nada Profil AB</h1>
-                <p className="text-sm text-muted-foreground">Professionella produkter med logotyp</p>
-              </div>
             </div>
           </div>
         </div>
