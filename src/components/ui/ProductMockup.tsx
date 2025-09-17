@@ -141,38 +141,62 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    if (!logoImg) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const logoW = canvasRef.current!.width * 0.12;
-    const logoH = logoW;
-    if (x >= logoPos.x && x <= logoPos.x + logoW && y >= logoPos.y && y <= logoPos.y + logoH) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    const logoW = canvas.width * 0.12;
+    const logoH = (logoImg.height / logoImg.width) * logoW;
+    
+    if (x >= logoPos.x && x <= logoPos.x + logoW && 
+        y >= logoPos.y && y <= logoPos.y + logoH) {
       setDragging(true);
+      e.preventDefault();
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!dragging || !logoImg) return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     setLogoPos({ x, y });
 
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext('2d')!;
-    const bg = new Image();
-    bg.src = product.image_url!;
-    bg.onload = () => {
+    // Redraw canvas immediately with new logo position
+    const ctx = canvas.getContext('2d');
+    if (!ctx || !product.image_url) return;
+
+    const productImg = new Image();
+    productImg.crossOrigin = 'anonymous';
+    productImg.onload = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(bg, 0, 0);
+      ctx.drawImage(productImg, 0, 0);
 
       const logoW = canvas.width * 0.12;
       const logoH = (logoImg.height / logoImg.width) * logoW;
       ctx.drawImage(logoImg, x, y, logoW, logoH);
+      
+      // Update preview
+      const previewDataUrl = canvas.toDataURL('image/png');
+      setPreviewUrl(previewDataUrl);
     };
+    productImg.src = product.image_url;
   };
 
   const handleMouseUp = () => setDragging(false);
@@ -225,8 +249,9 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            className="border rounded cursor-move"
-            style={{ maxWidth: '100%' }}
+            onMouseLeave={handleMouseUp}
+            className="border rounded cursor-move select-none"
+            style={{ maxWidth: '100%', cursor: dragging ? 'grabbing' : 'grab' }}
           />
 
           {isUploading && (
