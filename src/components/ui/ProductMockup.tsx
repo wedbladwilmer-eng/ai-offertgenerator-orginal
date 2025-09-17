@@ -21,6 +21,9 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [mockupUrl, setMockupUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [logoPos, setLogoPos] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
@@ -42,7 +45,6 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
     try {
       const canvas = canvasRef.current;
       if (!canvas) throw new Error('Canvas not available');
-
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) throw new Error('Canvas context not available');
 
@@ -62,21 +64,21 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
       ctx.drawImage(productImg, 0, 0);
 
       // 🖍 Ladda loggan
-      const logoImg = new Image();
-      logoImg.crossOrigin = 'anonymous';
+      const rawLogo = new Image();
+      rawLogo.crossOrigin = 'anonymous';
       const logoUrl = URL.createObjectURL(file);
       await new Promise((res, rej) => {
-        logoImg.onload = res;
-        logoImg.onerror = rej;
-        logoImg.src = logoUrl;
+        rawLogo.onload = res;
+        rawLogo.onerror = rej;
+        rawLogo.src = logoUrl;
       });
 
       // 🧼 Ta bort vit bakgrund (om det finns)
       const tmp = document.createElement('canvas');
-      tmp.width = logoImg.width;
-      tmp.height = logoImg.height;
+      tmp.width = rawLogo.width;
+      tmp.height = rawLogo.height;
       const tctx = tmp.getContext('2d', { willReadFrequently: true })!;
-      tctx.drawImage(logoImg, 0, 0);
+      tctx.drawImage(rawLogo, 0, 0);
       const imgData = tctx.getImageData(0, 0, tmp.width, tmp.height);
       const d = imgData.data;
       for (let i = 0; i < d.length; i += 4) {
@@ -84,19 +86,20 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
       }
       tctx.putImageData(imgData, 0, 0);
 
-      const cleanLogo = new Image();
-      cleanLogo.src = tmp.toDataURL();
-      await new Promise((res) => (cleanLogo.onload = res));
+      const cleanedLogo = new Image();
+      cleanedLogo.src = tmp.toDataURL();
+      await new Promise((res) => (cleanedLogo.onload = res));
 
-      // 📍 Placera på bärarens vänstra bröst (bildens högra sida)
+      // 📍 Startposition (bärarens vänstra bröst = bildens högra)
       const logoW = productImg.width * 0.12;
-      const logoH = (cleanLogo.height / cleanLogo.width) * logoW;
-      const posX = productImg.width * 0.65; // 65% från vänster = bildens högra sida
-      const posY = productImg.height * 0.25;
+      const startX = productImg.width * 0.65;
+      const startY = productImg.height * 0.25;
 
-      ctx.drawImage(cleanLogo, posX, posY, logoW, logoH);
+      ctx.drawImage(cleanedLogo, startX, startY, logoW, (cleanedLogo.height / cleanedLogo.width) * logoW);
 
-      // ⚡ Visa preview direkt
+      setLogoPos({ x: startX, y: startY });
+      setLogoImg(cleanedLogo);
+
       const previewDataUrl = canvas.toDataURL('image/png');
       setPreviewUrl(previewDataUrl);
 
@@ -137,6 +140,43 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
     }
   };
 
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const logoW = canvasRef.current!.width * 0.12;
+    const logoH = logoW;
+    if (x >= logoPos.x && x <= logoPos.x + logoW && y >= logoPos.y && y <= logoPos.y + logoH) {
+      setDragging(true);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!dragging || !logoImg) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    setLogoPos({ x, y });
+
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext('2d')!;
+    const bg = new Image();
+    bg.src = product.image_url!;
+    bg.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bg, 0, 0);
+
+      const logoW = canvas.width * 0.12;
+      const logoH = (logoImg.height / logoImg.width) * logoW;
+      ctx.drawImage(logoImg, x, y, logoW, logoH);
+    };
+  };
+
+  const handleMouseUp = () => setDragging(false);
+
   return (
     <div className="space-y-6">
       <Card>
@@ -161,12 +201,6 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
                   {product.price_ex_vat ? `${product.price_ex_vat} kr` : 'Pris ej tillgängligt'}
                 </p>
               </div>
-              {product.category && (
-                <div>
-                  <span className="font-medium">Kategori:</span>
-                  <p className="text-muted-foreground">{product.category}</p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -182,11 +216,18 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
               disabled={isUploading}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Logotypen placeras på vänster bröst (från bärarens perspektiv)
+              Logotypen placeras på vänster bröst men kan flyttas med musen
             </p>
           </div>
 
-          <canvas ref={canvasRef} style={{ display: 'none' }} />
+          <canvas
+            ref={canvasRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            className="border rounded cursor-move"
+            style={{ maxWidth: '100%' }}
+          />
 
           {isUploading && (
             <div className="text-center">
@@ -218,11 +259,6 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
                   alt="Produktmockup med logotyp"
                   className="max-w-full h-auto rounded border bg-white"
                 />
-                {mockupUrl && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Mockupen har sparats i Supabase Storage
-                  </p>
-                )}
               </div>
             </div>
           </CardContent>
