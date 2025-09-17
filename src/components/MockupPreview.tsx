@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import QuoteGenerator from '@/components/QuoteGenerator';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 interface MockupPreviewProps {
   product?: {
@@ -19,20 +20,10 @@ const MockupPreview: React.FC<MockupPreviewProps> = ({
   previewUrl, 
   mockupUrl 
 }) => {
-  const [showQuoteGenerator, setShowQuoteGenerator] = useState(false);
+  const navigate = useNavigate();
 
   if (!product) {
     return null;
-  }
-
-  // Show quote generator if we have a mockup or preview
-  if ((previewUrl || mockupUrl) && showQuoteGenerator) {
-    return (
-      <QuoteGenerator 
-        product={product} 
-        mockupUrl={mockupUrl || previewUrl} 
-      />
-    );
   }
 
   // Show preview section
@@ -63,12 +54,13 @@ const MockupPreview: React.FC<MockupPreviewProps> = ({
               </div>
             </div>
             <div className="mt-6 text-center">
-              <button
-                onClick={() => setShowQuoteGenerator(true)}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md font-medium"
+              <Button
+                onClick={() => navigate(`/quote?productId=${product.id}&mockup=${encodeURIComponent(previewUrl || mockupUrl || '')}`)}
+                size="lg"
+                className="gap-2"
               >
                 Skapa offert för denna produkt
-              </button>
+              </Button>
             </div>
           </CardContent>
         </Card>

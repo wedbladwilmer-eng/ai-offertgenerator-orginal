@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generatePDF } from '@/utils/pdfGenerator';
 import { Product } from '@/hooks/useProducts';
 import kostaNadaLogo from '@/assets/kosta-nada-company-logo.png';
+import kostaNadaProfilLogo from '@/assets/kosta-nada-profil-logo.png';
 
 const Quote = () => {
   const [searchParams] = useSearchParams();
@@ -21,7 +22,7 @@ const Quote = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [mockupUrl, setMockupUrl] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
-  const [margin, setMargin] = useState('1.2'); // Default 20% margin (1:1.2)
+  const [margin, setMargin] = useState('2'); // Default 1:2 ratio
   const [customerName, setCustomerName] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -71,8 +72,8 @@ const Quote = () => {
   const marginMultiplier = parseFloat(margin);
   const basePrice = product.price_ex_vat || 0;
   const priceWithMargin = basePrice * marginMultiplier;
-  const priceIncVat = priceWithMargin * 1.25; // 25% VAT
-  const totalPrice = priceIncVat * quantity;
+  // Prices from New Wave already include VAT, so no need to add VAT again
+  const totalPrice = priceWithMargin * quantity;
 
   const handleGeneratePDF = async () => {
     if (!customerName.trim()) {
@@ -95,7 +96,7 @@ const Quote = () => {
         }],
         companyName: customerName,
         customerName: customerName,
-        total: totalPrice / 1.25, // Ex VAT
+        total: totalPrice / 1.25, // Ex VAT (for PDF calculation)
         totalWithVat: totalPrice
       };
 
@@ -134,10 +135,14 @@ const Quote = () => {
             </Button>
             <div className="flex items-center gap-4">
               <img 
-                src={kostaNadaLogo} 
-                alt="Kosta Nada New Wave Profile" 
+                src={kostaNadaProfilLogo} 
+                alt="Kosta Nada Profil AB" 
                 className="h-16 w-auto object-contain"
               />
+              <div>
+                <h1 className="text-xl font-bold text-foreground">Kosta Nada Profil AB</h1>
+                <p className="text-sm text-muted-foreground">Professionella produkter med logotyp</p>
+              </div>
             </div>
           </div>
         </div>
@@ -222,7 +227,7 @@ const Quote = () => {
                         </div>
                       )}
                       <div>
-                        <Label className="font-semibold">Grundpris (exkl. moms)</Label>
+                        <Label className="font-semibold">Grundpris (inkl. moms)</Label>
                         <p className="mt-1">{basePrice.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</p>
                       </div>
                     </div>
@@ -246,15 +251,12 @@ const Quote = () => {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="1.2">1:1.2 (20%)</SelectItem>
-                            <SelectItem value="1.3">1:1.3 (30%)</SelectItem>
-                            <SelectItem value="1.4">1:1.4 (40%)</SelectItem>
-                            <SelectItem value="1.5">1:1.5 (50%)</SelectItem>
-                            <SelectItem value="1.6">1:1.6 (60%)</SelectItem>
-                            <SelectItem value="2.0">1:2 (100%)</SelectItem>
-                            <SelectItem value="2.5">1:2.5 (150%)</SelectItem>
-                            <SelectItem value="3.0">1:3 (200%)</SelectItem>
-                            <SelectItem value="4.0">1:4 (300%)</SelectItem>
+                            <SelectItem value="2">1:2</SelectItem>
+                            <SelectItem value="2.5">1:2.5</SelectItem>
+                            <SelectItem value="3">1:3</SelectItem>
+                            <SelectItem value="3.5">1:3.5</SelectItem>
+                            <SelectItem value="4">1:4</SelectItem>
+                            <SelectItem value="5">1:5</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -280,7 +282,7 @@ const Quote = () => {
                   <div className="bg-muted/30 p-4">
                     <div className="grid grid-cols-4 gap-4">
                       <span>{product.id}</span>
-                      <span>{priceIncVat.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</span>
+                      <span>{priceWithMargin.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</span>
                       <span>{quantity}</span>
                       <span className="font-semibold">{totalPrice.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</span>
                     </div>
@@ -291,14 +293,6 @@ const Quote = () => {
               {/* Summary */}
               <div className="bg-muted/30 p-6 rounded-lg">
                 <div className="space-y-2 max-w-sm ml-auto">
-                  <div className="flex justify-between">
-                    <span>Subtotal (exkl. moms):</span>
-                    <span>{(totalPrice / 1.25).toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Moms (25%):</span>
-                    <span>{(totalPrice - totalPrice / 1.25).toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</span>
-                  </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-bold text-primary">
                     <span>TOTALT (inkl. moms):</span>
