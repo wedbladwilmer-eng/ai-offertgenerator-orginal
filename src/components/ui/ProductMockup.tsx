@@ -35,17 +35,7 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
     };
   };
 
-  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.includes('png')) {
-      toast({
-        title: "Fel filformat",
-        description: "Endast PNG-filer är tillåtna för loggor.",
-        variant: "destructive",
-      });
-      return;
+ 
     }
 
     setIsUploading(true);
@@ -241,4 +231,115 @@ const ProductMockup: React.FC<ProductMockupProps> = ({ product }) => {
   );
 };
 
-export default ProductMockup;
+export default ProductMockup;const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  if (!file.type.includes('png')) {
+    toast({
+      title: "Fel filformat",
+      description: "Endast PNG-filer är tillåtna för loggor.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsUploading(true);
+
+  try {
+    const canvas = canvasRef.current;
+    if (!canvas) throw new Error('Canvas not available');
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error('Canvas context not available');
+
+    // 🖼 Ladda produktbild
+    const productImg = new Image();
+    productImg.crossOrigin = 'anonymous';
+    await new Promise((res, rej) => {
+      productImg.onload = res;
+      productImg.onerror = rej;
+      productImg.src = product.image_url || '/placeholder.svg';
+    });
+
+    canvas.width = productImg.width;
+    canvas.height = productImg.height;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(productImg, 0, 0);
+
+    // 🖍 Ladda loggan
+    const logoImg = new Image();
+    logoImg.crossOrigin = 'anonymous';
+    const logoUrl = URL.createObjectURL(file);
+    await new Promise((res, rej) => {
+      logoImg.onload = res;
+      logoImg.onerror = rej;
+      logoImg.src = logoUrl;
+    });
+
+    // 🧼 Ta bort vit bakgrund (om det finns)
+    const tmp = document.createElement('canvas');
+    tmp.width = logoImg.width;
+    tmp.height = logoImg.height;
+    const tctx = tmp.getContext('2d', { willReadFrequently: true })!;
+    tctx.drawImage(logoImg, 0, 0);
+    const imgData = tctx.getImageData(0, 0, tmp.width, tmp.height);
+    const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] > 240 && d[i+1] > 240 && d[i+2] > 240) d[i+3] = 0; // vit → transparent
+    }
+    tctx.putImageData(imgData, 0, 0);
+
+    const cleanLogo = new Image();
+    cleanLogo.src = tmp.toDataURL();
+    await new Promise((res) => (cleanLogo.onload = res));
+
+    // 📍 Placera på bärarens vänstra bröst (bildens högra sida)
+    const logoW = productImg.width * 0.12;
+    const logoH = (cleanLogo.height / cleanLogo.width) * logoW;
+    const posX = productImg.width * 0.65; // 65% från vänster = bildens högra sida
+    const posY = productImg.height * 0.25;
+
+    ctx.drawImage(cleanLogo, posX, posY, logoW, logoH);
+
+    // ⚡ Visa preview direkt
+    const previewDataUrl = canvas.toDataURL('image/png');
+    setPreviewUrl(previewDataUrl);
+
+    // 💾 Ladda upp till Supabase
+    canvas.toBlob(async (blob) => {
+      if (!blob) throw new Error('Failed to create mockup image');
+
+      const fileName = `${product.id}-mockup.png`;
+      const { error: uploadError } = await supabase.storage
+        .from('Mockups')
+        .upload(fileName, blob, { upsert: true, contentType: 'image/png' });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('Mockups')
+        .getPublicUrl(fileName);
+
+      setMockupUrl(publicUrlData.publicUrl);
+
+      toast({
+        title: "Mockup skapad!",
+        description: "Din produktmockup har sparats framgångsrikt.",
+      });
+
+      URL.revokeObjectURL(logoUrl);
+    }, 'image/png');
+
+  } catch (error) {
+    console.error('Error creating mockup:', error);
+    toast({
+      title: "Fel vid skapande av mockup",
+      description: "Något gick fel när mockupen skapades. Försök igen.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsUploading(false);
+  }
+};
