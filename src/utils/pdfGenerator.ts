@@ -56,9 +56,6 @@ export const generatePDF = async (data: PDFData) => {
   pdf.setFontSize(16);
   pdf.setFont('helvetica', 'bold');
   pdf.text('Kosta Nada Profil AB', 45, 25);
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text('Professionella produkter med logotyp', 45, 30);
   
   // Header
   pdf.setFontSize(24);
@@ -107,13 +104,13 @@ export const generatePDF = async (data: PDFData) => {
       
       if (img.complete) {
         const canvas = await html2canvas(img, {
-          width: 300,
-          height: 300,
+          width: 600,
+          height: 600,
           scale: 1
         });
         
         const imgData = canvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', 20, yPosition, 60, 60);
+        pdf.addImage(imgData, 'PNG', 20, yPosition, 80, 80);
       }
       
       document.body.removeChild(tempDiv);
@@ -125,16 +122,16 @@ export const generatePDF = async (data: PDFData) => {
   // Product details next to image
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(item.product.name, 90, yPosition + 10);
+  pdf.text(item.product.name, 110, yPosition + 10);
   
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(`Artikelnummer: ${item.product.id}`, 90, yPosition + 20);
+  pdf.text(`Artikelnummer: ${item.product.id}`, 110, yPosition + 20);
   if (item.product.category) {
-    pdf.text(`Kategori: ${item.product.category}`, 90, yPosition + 27);
+    pdf.text(`Kategori: ${item.product.category}`, 110, yPosition + 27);
   }
   
-  yPosition += 75;
+  yPosition += 95;
   
   // Pricing table header
   pdf.setFontSize(12);
@@ -174,7 +171,7 @@ export const generatePDF = async (data: PDFData) => {
   
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('TOTALT (inkl. moms):', 120, yPosition);
+  pdf.text('TOTALT (inkl. moms):', 25, yPosition);
   pdf.text(`${totalPrice.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr`, 150, yPosition);
   
   // Terms
