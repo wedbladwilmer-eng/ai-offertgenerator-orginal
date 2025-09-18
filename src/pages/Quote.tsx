@@ -185,22 +185,22 @@ const Quote = () => {
                   {/* Product Image */}
                   <div className="space-y-4">
                     {mockupUrl ? (
-                      <div className="bg-white p-4 rounded-lg border">
+                      <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
                         <img
                           src={mockupUrl}
                           alt="Produktmockup med logotyp"
-                          className="w-full h-auto rounded"
+                          className="max-h-[400px] w-auto object-contain mx-auto rounded-sm border border-border"
                         />
-                        <p className="text-sm text-muted-foreground mt-2 text-center">
+                        <p className="text-sm text-muted-foreground mt-2 text-center w-full">
                           Produkt med din logotyp
                         </p>
                       </div>
                     ) : product.image_url ? (
-                      <div className="bg-white p-4 rounded-lg border">
+                      <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
                         <img
                           src={product.image_url}
                           alt={product.name}
-                          className="w-full h-auto rounded"
+                          className="max-h-[400px] w-auto object-contain mx-auto rounded-sm border border-border"
                         />
                       </div>
                     ) : (

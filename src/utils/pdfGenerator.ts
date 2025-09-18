@@ -94,23 +94,42 @@ export const generatePDF = async (data: PDFData) => {
       const img = document.createElement('img');
       img.crossOrigin = 'anonymous';
       img.src = item.mockup_url;
-      tempDiv.appendChild(img);
+
+      // Create a container to enforce contain, centering and border
+      const container = document.createElement('div');
+      container.style.width = '512px';
+      container.style.height = '512px';
+      container.style.display = 'flex';
+      container.style.alignItems = 'center';
+      container.style.justifyContent = 'center';
+      container.style.backgroundColor = '#ffffff';
+      container.style.border = '1px solid #e5e5e5';
+
+      // Style image for contain behavior
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = '100%';
+      img.style.objectFit = 'contain';
+
+      container.appendChild(img);
+      tempDiv.appendChild(container);
       
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = resolve; // Continue even if image fails
+      await new Promise((resolve) => {
+        img.onload = resolve as any;
+        img.onerror = resolve as any; // Continue even if image fails
         setTimeout(resolve, 5000);
       });
       
       if (img.complete) {
-        const canvas = await html2canvas(img, {
-          width: 600,
-          height: 600,
-          scale: 1
+        const canvas = await html2canvas(container, {
+          width: 512,
+          height: 512,
+          scale: 1,
+          backgroundColor: '#ffffff',
         });
         
         const imgData = canvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', 20, yPosition, 80, 80);
+        // Add image smaller (~30% zoomed out vs previous 80mm)
+        pdf.addImage(imgData, 'PNG', 20, yPosition, 56, 56);
       }
       
       document.body.removeChild(tempDiv);
