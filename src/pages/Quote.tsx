@@ -22,10 +22,8 @@ const Quote = () => {
   const [mockupUrl, setMockupUrl] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
   const [customerName, setCustomerName] = useState('');
+  const [margin, setMargin] = useState('2');
   const [isGenerating, setIsGenerating] = useState(false);
-  
-  // Fixed margin ratio of 1:2 for clean customer view
-  const margin = '2';
 
   const productId = searchParams.get('productId');
   const mockupParam = searchParams.get('mockup');
@@ -164,16 +162,43 @@ const Quote = () => {
             <div className="space-y-8">
               {/* Customer Info */}
               <div className="bg-muted/30 p-6 rounded-lg">
-                <Label htmlFor="customer-name" className="text-base font-semibold">
-                  Kundnamn *
-                </Label>
-                <Input
-                  id="customer-name"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Ange företag eller kundnamn"
-                  className="mt-2"
-                />
+                <div className="grid lg:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="customer-name" className="text-base font-semibold">
+                      Kundnamn *
+                    </Label>
+                    <Input
+                      id="customer-name"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="Ange företag eller kundnamn"
+                      className="mt-2"
+                    />
+                  </div>
+                  <div className={`margin-calculator-field ${isGenerating ? 'hidden' : ''}`}>
+                    <Label htmlFor="margin-select" className="text-base font-semibold text-orange-600">
+                      Marginal (endast för beräkning) *
+                    </Label>
+                    <Select value={margin} onValueChange={setMargin}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="Välj marginal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1.5">1:1.5</SelectItem>
+                        <SelectItem value="2">1:2</SelectItem>
+                        <SelectItem value="2.5">1:2.5</SelectItem>
+                        <SelectItem value="3">1:3</SelectItem>
+                        <SelectItem value="3.5">1:3.5</SelectItem>
+                        <SelectItem value="4">1:4</SelectItem>
+                        <SelectItem value="4.5">1:4.5</SelectItem>
+                        <SelectItem value="5">1:5</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Detta fält syns inte för kunden i PDF:en
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <Separator />
