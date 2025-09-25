@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export type Product = {
@@ -10,6 +9,9 @@ export type Product = {
   image_url: string | null;
   category: string | null;
   logo_position: string | null;
+  brand?: string;
+  slug?: string;
+  variations?: Array<{ color: string }>;
 };
 
 export type QuoteItem = {
@@ -25,6 +27,48 @@ export const useProducts = () => {
   const [quote, setQuote] = useState<QuoteItem[]>([]);
   const { toast } = useToast();
 
+  const fetchProductData = async (articleNumber: string) => {
+    try {
+      const response = await fetch(
+        `https://commerce.gateway.nwg.se/assortment/sv/products?products=${encodeURIComponent(articleNumber)}&assortmentIds=152611&assortmentIds=153639`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Check if we got any products back
+      if (!data.products || data.products.length === 0) {
+        return null;
+      }
+      
+      const apiProduct = data.products[0];
+      
+      // Transform API response to our Product interface
+      const product: Product = {
+        id: articleNumber,
+        name: apiProduct.productName || 'Okänd produkt',
+        price_ex_vat: apiProduct.price?.retail?.num || 0,
+        image_url: apiProduct.image?.fileName 
+          ? `https://media.nwgmedia.com/${apiProduct.image.fileName}.jpg`
+          : null,
+        category: apiProduct.category || null,
+        brand: apiProduct.productBrandName || null,
+        slug: apiProduct.slug || null,
+        variations: apiProduct.variations?.map((v: any) => ({ color: v.color || v.name })) || [],
+        description: `En högkvalitativ ${apiProduct.category || 'produkt'} från ${apiProduct.productBrandName || 'kvalitetsmärke'} perfekt för profilering. Tillverkad för komfort och stil.`,
+        logo_position: null
+      };
+      
+      return product;
+    } catch (error) {
+      console.error('Error fetching from New Wave API:', error);
+      throw error;
+    }
+  };
+
   const searchByArticleNumber = async (articleNumber: string) => {
     if (!articleNumber.trim()) {
       toast({
@@ -37,24 +81,9 @@ export const useProducts = () => {
 
     setIsLoading(true);
     try {
-      // Use RPC or direct query to bypass strict typing
-      const { data, error } = await (supabase as any)
-        .from('products')
-        .select('*')
-        .eq('id', articleNumber.trim())
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching product:', error);
-        toast({
-          title: "Fel",
-          description: "Det gick inte att hämta produkten",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!data) {
+      const productData = await fetchProductData(articleNumber.trim());
+      
+      if (!productData) {
         toast({
           title: "Produkt ej hittad",
           description: `Ingen produkt med artikelnummer ${articleNumber} hittades`,
@@ -64,7 +93,6 @@ export const useProducts = () => {
         return;
       }
 
-      const productData = data as Product;
       setProduct(productData);
       toast({
         title: "Produkt hittad",
@@ -74,7 +102,7 @@ export const useProducts = () => {
       console.error('Error:', error);
       toast({
         title: "Fel",
-        description: "Ett oväntat fel inträffade",
+        description: "Det gick inte att hämta produkten från New Wave",
         variant: "destructive",
       });
     } finally {

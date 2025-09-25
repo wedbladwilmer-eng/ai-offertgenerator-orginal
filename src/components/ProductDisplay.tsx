@@ -47,6 +47,9 @@ export const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) =
             <div>
               <h3 className="text-xl font-semibold">{product.name}</h3>
               <p className="text-muted-foreground">Artikelnummer: {product.id}</p>
+              {product.brand && (
+                <p className="text-sm text-muted-foreground">Märke: {product.brand}</p>
+              )}
             </div>
             
             {product.description && (
@@ -59,7 +62,7 @@ export const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) =
             )}
             
             <div>
-              <Label>Pris (exkl. moms)</Label>
+              <Label>Pris (inkl. moms)</Label>
               <p className="text-lg font-semibold">
                 {formatPrice(product.price_ex_vat)}
               </p>
@@ -71,6 +74,22 @@ export const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) =
                 <p className="text-sm text-muted-foreground">
                   {product.category}
                 </p>
+              </div>
+            )}
+
+            {product.variations && product.variations.length > 0 && (
+              <div>
+                <Label>Tillgängliga färger</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {product.variations.map((variation, index) => (
+                    <span 
+                      key={index}
+                      className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded"
+                    >
+                      {variation.color}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
