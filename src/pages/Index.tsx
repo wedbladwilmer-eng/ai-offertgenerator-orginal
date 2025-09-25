@@ -77,7 +77,7 @@ const Index = () => {
               totalWithVat={getQuoteTotalWithVat()}
             />
 
-            {quote.length > 0 && (
+            {(quote.length > 0) && (
               <div className="flex justify-center">
                 <Button
                   onClick={handleCreateQuote}
