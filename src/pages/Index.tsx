@@ -79,9 +79,11 @@ const Index = () => {
             />
             
             <MockupPreview
-              product={product}
-              previewUrl={mockupPreviewUrl}
-              mockupUrl={mockupUrl}
+           <MockupPreview 
+  previewUrl={previewUrl} 
+  mockupUrl={mockupUrl} 
+/>
+
             />
           </div>
         </div>
