@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export type Product = {
   id: string;
@@ -27,42 +28,22 @@ export const useProducts = () => {
   const [quote, setQuote] = useState<QuoteItem[]>([]);
   const { toast } = useToast();
 
-  const fetchProductData = async (articleNumber: string) => {
+  // Function to fetch product data via Supabase Edge Function
+  const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
     try {
-      const response = await fetch(
-        `https://commerce.gateway.nwg.se/assortment/sv/products?products=${encodeURIComponent(articleNumber)}&assortmentIds=152611&assortmentIds=153639`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const { data, error } = await supabase.functions.invoke('new-wave-proxy', {
+        body: { articleNumber }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to fetch product data');
       }
-      
-      const data = await response.json();
-      
-      // Check if we got any products back
-      if (!data.products || data.products.length === 0) {
-        return null;
+
+      if (data.error) {
+        throw new Error(data.error);
       }
-      
-      const apiProduct = data.products[0];
-      
-      // Transform API response to our Product interface
-      const product: Product = {
-        id: articleNumber,
-        name: apiProduct.productName || 'Okänd produkt',
-        price_ex_vat: apiProduct.price?.retail?.num || 0,
-        image_url: apiProduct.image?.fileName 
-          ? `https://media.nwgmedia.com/${apiProduct.image.fileName}.jpg`
-          : null,
-        category: apiProduct.category || null,
-        brand: apiProduct.productBrandName || null,
-        slug: apiProduct.slug || null,
-        variations: apiProduct.variations?.map((v: any) => ({ color: v.color || v.name })) || [],
-        description: `En högkvalitativ ${apiProduct.category || 'produkt'} från ${apiProduct.productBrandName || 'kvalitetsmärke'} perfekt för profilering. Tillverkad för komfort och stil.`,
-        logo_position: null
-      };
-      
-      return product;
+
+      return data as Product;
     } catch (error) {
       console.error('Error fetching from New Wave API:', error);
       throw error;

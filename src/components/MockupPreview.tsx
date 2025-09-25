@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProductData {
   id: string;
@@ -25,29 +26,31 @@ const MockupPreview: React.FC<MockupPreviewProps> = ({ previewUrl, mockupUrl }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 🧠 Hämta produktdata från New Wave API
+  // Use the same product fetching logic as useProducts hook
   const fetchProductData = async (article: string) => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(
-        `https://commerce.gateway.nwg.se/assortment/sv/products?products=${article}&assortmentIds=152611&assortmentIds=153639`
-      );
-      if (!res.ok) throw new Error('Kunde inte hämta produktdata');
-      const data = await res.json();
+      const { data, error } = await supabase.functions.invoke('new-wave-proxy', {
+        body: { articleNumber: article }
+      });
 
-      if (!data || data.length === 0) throw new Error('Ingen produkt hittades');
+      if (error) {
+        throw new Error(error.message || 'Kunde inte hämta produktdata');
+      }
 
-      const p = data[0];
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Transform to local ProductData format
       setProduct({
-        id: p.productNumber,
-        name: p.productName,
-        image_url: p.pictures?.[0]
-          ? `https://nwgmedia.com/${p.pictures[0].fileName}.jpg`
-          : '/placeholder.svg',
-        price_ex_vat: p.price?.retail?.num || 0,
-        category: p.filters?.category?.[0] || '',
-        description: `${p.productBrandName} – ${p.productName}`,
+        id: data.id,
+        name: data.name,
+        image_url: data.image_url || '/placeholder.svg',
+        price_ex_vat: data.price_ex_vat || 0,
+        category: data.category || '',
+        description: data.description || `${data.brand} – ${data.name}`,
       });
     } catch (err: any) {
       console.error(err);
