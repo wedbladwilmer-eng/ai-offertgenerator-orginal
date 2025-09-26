@@ -24,6 +24,7 @@ const Quote = () => {
   const [customerName, setCustomerName] = useState('');
   const [margin, setMargin] = useState('2');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const productId = searchParams.get('productId');
   const mockupParam = searchParams.get('mockup');
@@ -37,32 +38,65 @@ const Quote = () => {
     }
   }, [productId, mockupParam]);
 
+  // Function to fetch product data via New Wave API
+  const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('new-wave-proxy', {
+        body: { articleNumber }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to fetch product data');
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      return data as Product;
+    } catch (error) {
+      console.error('Error fetching from New Wave API:', error);
+      throw error;
+    }
+  };
+
   const fetchProduct = async () => {
     if (!productId) return;
 
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('id', productId)
-      .single();
+    setIsLoading(true);
+    try {
+      const productData = await fetchProductData(productId);
+      
+      if (!productData) {
+        toast({
+          title: "Produkt ej hittad",
+          description: `Ingen produkt med artikelnummer ${productId} hittades`,
+          variant: "destructive",
+        });
+        setProduct(null);
+        return;
+      }
 
-    if (error) {
+      setProduct(productData);
+    } catch (error) {
+      console.error('Error:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte hämta produktinformation",
+        description: "Kunde inte hämta produktinformation från New Wave",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    setProduct(data);
   };
 
-  if (!product) {
+  if (isLoading || !product) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <p className="text-muted-foreground">Laddar produktinformation...</p>
+          <p className="text-muted-foreground">
+            {isLoading ? 'Laddar produktinformation...' : 'Produktinformation kunde inte laddas'}
+          </p>
         </div>
       </div>
     );
