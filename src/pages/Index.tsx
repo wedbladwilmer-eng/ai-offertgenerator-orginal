@@ -1,72 +1,75 @@
-import { useState } from "react";
-import { useProducts } from "@/hooks/useProducts";
-import { ProductSearch } from "@/components/ProductSearch";
-import { ProductDisplay } from "@/components/ProductDisplay";
-import { QuoteList } from "@/components/QuoteList";
-import MockupPreview from "@/components/MockupPreview";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useNavigate } from "react-router-dom";
+import { ProductSearch } from '@/components/ProductSearch';
+import { ProductDisplay } from '@/components/ProductDisplay';
+import { QuoteList } from '@/components/QuoteList';
+import ProductMockup from '@/components/ui/ProductMockup';
+import MockupPreview from '@/components/MockupPreview';
+import { useProducts } from '@/hooks/useProducts';
+import { useState } from 'react';
 
 const Index = () => {
-  const navigate = useNavigate();
+  const [mockupPreviewUrl, setMockupPreviewUrl] = useState<string | null>(null);
+  const [mockupUrl, setMockupUrl] = useState<string | null>(null);
   
   const {
+    isLoading,
     product,
     quote,
-    isLoading,
     searchByArticleNumber,
     addToQuote,
     updateQuoteItem,
     removeFromQuote,
     clearQuote,
     getQuoteTotal,
-    getQuoteTotalWithVat
+    getQuoteTotalWithVat,
   } = useProducts();
 
-  const handleCreateQuote = () => {
-    if (quote.length > 0) {
-      navigate("/quote");
-    }
+  const handlePreviewUpdate = (previewUrl: string | null, finalMockupUrl: string | null) => {
+    setMockupPreviewUrl(previewUrl);
+    setMockupUrl(finalMockupUrl);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
-      <div className="container mx-auto max-w-6xl">
-        <header className="text-center mb-8">
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto py-8 space-y-8">
+        <header className="text-center">
           <h1 className="text-4xl font-bold text-foreground mb-2">
-            Offertskapare
+            Produktsökning & Offertgenerator
           </h1>
-          <p className="text-muted-foreground">
-            Sök produkter och skapa professionella offerter
+          <p className="text-xl text-muted-foreground">
+            Sök produkter med artikelnummer och skapa professionella offerter
           </p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column - Product Search & Display */}
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* ✅ Vänster sida - Produktsökning och mockup */}
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Produktsökning</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ProductSearch 
-                  onSearch={searchByArticleNumber}
-                  isLoading={isLoading}
-                />
-              </CardContent>
-            </Card>
-
+            <ProductSearch 
+              onSearch={searchByArticleNumber}
+              isLoading={isLoading}
+            />
+            
             {product && (
-              <ProductDisplay
-                product={product}
-                onAddToQuote={addToQuote}
-              />
+              <>
+                <ProductDisplay 
+                  product={product}
+                  onAddToQuote={addToQuote}
+                />
+                
+                <ProductMockup 
+                  product={{
+                    id: product.id,
+                    name: product.name,
+                    image_url: product.image_url,
+                    price_ex_vat: product.price_ex_vat,
+                    category: product.category
+                  }}
+                  onPreviewUpdate={handlePreviewUpdate}
+                />
+              </>
             )}
-
           </div>
 
-          {/* Right Column - Quote & Preview */}
+          {/* ✅ Höger sida - Offertlista och mockup-preview */}
           <div className="space-y-6">
             <QuoteList
               quote={quote}
@@ -76,20 +79,12 @@ const Index = () => {
               total={getQuoteTotal()}
               totalWithVat={getQuoteTotalWithVat()}
             />
-
-            {(quote.length > 0) && (
-              <div className="flex justify-center">
-                <Button
-                  onClick={handleCreateQuote}
-                  size="lg"
-                  className="w-full"
-                >
-                  Skapa offert
-                </Button>
-              </div>
-            )}
-
-            <MockupPreview />
+            
+            {/* ✅ Rätt användning av MockupPreview */}
+            <MockupPreview 
+              previewUrl={mockupPreviewUrl} 
+              mockupUrl={mockupUrl} 
+            />
           </div>
         </div>
       </div>
