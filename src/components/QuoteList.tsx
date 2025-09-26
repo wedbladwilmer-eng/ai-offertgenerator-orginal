@@ -74,29 +74,44 @@ export const QuoteList = ({
         {quote.map((item) => (
           <div key={item.product.id} className="border rounded-lg p-4 space-y-4">
             <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <h4 className="font-semibold">{item.product.name}</h4>
-                <p className="text-sm text-muted-foreground">
-                  Art.nr: {item.product.id}
-                </p>
-                <div className="flex items-center gap-4 mt-2">
-                  <Label htmlFor={`qty-${item.product.id}`}>Antal:</Label>
-                  <Input
-                    id={`qty-${item.product.id}`}
-                    type="number"
-                    min="1"
-                    value={item.quantity}
-                    onChange={(e) => onUpdateItem(item.product.id, { 
-                      quantity: Math.max(1, parseInt(e.target.value) || 1) 
-                    })}
-                    className="w-20"
-                  />
-                  <span className="text-sm">
-                    {item.product.price_ex_vat 
-                      ? `${(item.product.price_ex_vat * item.quantity).toLocaleString('sv-SE')} kr`
-                      : 'Pris på förfrågan'
-                    }
-                  </span>
+              <div className="flex gap-4 flex-1">
+                {(item.mockup_url || item.product.image_url) && (
+                  <div className="flex-shrink-0">
+                    <img 
+                      src={item.mockup_url || item.product.image_url} 
+                      alt={item.product.name}
+                      className="w-20 h-20 object-cover rounded-lg border"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/placeholder.svg';
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <h4 className="font-semibold">{item.product.name}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Art.nr: {item.product.id}
+                  </p>
+                  <div className="flex items-center gap-4 mt-2">
+                    <Label htmlFor={`qty-${item.product.id}`}>Antal:</Label>
+                    <Input
+                      id={`qty-${item.product.id}`}
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => onUpdateItem(item.product.id, { 
+                        quantity: Math.max(1, parseInt(e.target.value) || 1) 
+                      })}
+                      className="w-20"
+                    />
+                    <span className="text-sm">
+                      {item.product.price_ex_vat 
+                        ? `${(item.product.price_ex_vat * item.quantity).toLocaleString('sv-SE')} kr`
+                        : 'Pris på förfrågan'
+                      }
+                    </span>
+                  </div>
                 </div>
               </div>
               <Button
