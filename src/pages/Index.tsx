@@ -1,10 +1,10 @@
+import { useState } from 'react';
 import { ProductSearch } from '@/components/ProductSearch';
 import { ProductDisplay } from '@/components/ProductDisplay';
 import { QuoteList } from '@/components/QuoteList';
 import ProductMockup from '@/components/ui/ProductMockup';
 import MockupPreview from '@/components/MockupPreview';
 import { useProducts } from '@/hooks/useProducts';
-import { useState } from 'react';
 
 const Index = () => {
   const [mockupPreviewUrl, setMockupPreviewUrl] = useState<string | null>(null);
@@ -31,7 +31,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 space-y-8">
-        {/* Header */}
+        {/* ✅ Header */}
         <header className="text-center">
           <h1 className="text-4xl font-bold text-foreground mb-2">
             Produktsökning & Offertgenerator
@@ -42,27 +42,27 @@ const Index = () => {
         </header>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Vänster kolumn: sökning och mockup */}
+          {/* ✅ Vänstra kolumnen: Produktsökning + Mockup */}
           <div className="space-y-6">
-            <ProductSearch
+            <ProductSearch 
               onSearch={searchByArticleNumber}
               isLoading={isLoading}
             />
 
             {product && (
               <>
-                <ProductDisplay
+                <ProductDisplay 
                   product={product}
                   onAddToQuote={addToQuote}
                 />
 
-                <ProductMockup
+                <ProductMockup 
                   product={{
                     id: product.id,
                     name: product.name,
                     image_url: product.image_url,
                     price_ex_vat: product.price_ex_vat,
-                    category: product.category,
+                    category: product.category
                   }}
                   onPreviewUpdate={handlePreviewUpdate}
                 />
@@ -70,7 +70,7 @@ const Index = () => {
             )}
           </div>
 
-          {/* Höger kolumn: offert och mockup-preview */}
+          {/* ✅ Högra kolumnen: Offertlista + Mockup Preview */}
           <div className="space-y-6">
             <QuoteList
               quote={quote}
@@ -81,9 +81,10 @@ const Index = () => {
               totalWithVat={getQuoteTotalWithVat()}
             />
 
-            <MockupPreview 
-              previewUrl={mockupPreviewUrl} 
-              mockupUrl={mockupUrl} 
+            <MockupPreview
+              product={product || undefined}
+              previewUrl={mockupPreviewUrl}
+              mockupUrl={mockupUrl}
             />
           </div>
         </div>
@@ -93,3 +94,4 @@ const Index = () => {
 };
 
 export default Index;
+
