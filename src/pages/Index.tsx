@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ProductSearch } from '@/components/ProductSearch';
 import { ProductDisplay } from '@/components/ProductDisplay';
 import { QuoteList } from '@/components/QuoteList';
 import ProductMockup from '@/components/ui/ProductMockup';
@@ -14,7 +13,6 @@ const Index = () => {
     isLoading,
     product,
     quote,
-    searchByArticleNumber,
     addToQuote,
     updateQuoteItem,
     removeFromQuote,
@@ -34,21 +32,16 @@ const Index = () => {
         {/* ✅ Header */}
         <header className="text-center">
           <h1 className="text-4xl font-bold text-foreground mb-2">
-            Produktsökning & Offertgenerator
+            Offertgenerator
           </h1>
           <p className="text-xl text-muted-foreground">
-            Sök produkter med artikelnummer och skapa professionella offerter
+            Skapa professionella offerter
           </p>
         </header>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* ✅ Vänstra kolumnen: Produktsökning + Mockup */}
+          {/* ✅ Vänstra kolumnen: Mockup */}
           <div className="space-y-6">
-            <ProductSearch 
-              onSearch={searchByArticleNumber}
-              isLoading={isLoading}
-            />
-
             {product && (
               <>
                 <ProductDisplay 
