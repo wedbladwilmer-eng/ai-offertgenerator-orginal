@@ -9,7 +9,7 @@ import { useState } from 'react';
 const Index = () => {
   const [mockupPreviewUrl, setMockupPreviewUrl] = useState<string | null>(null);
   const [mockupUrl, setMockupUrl] = useState<string | null>(null);
-  
+
   const {
     isLoading,
     product,
@@ -31,6 +31,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 space-y-8">
+        {/* Header */}
         <header className="text-center">
           <h1 className="text-4xl font-bold text-foreground mb-2">
             Produktsökning & Offertgenerator
@@ -41,27 +42,27 @@ const Index = () => {
         </header>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* ✅ Vänster sida - Produktsökning och mockup */}
+          {/* Vänster kolumn: sökning och mockup */}
           <div className="space-y-6">
-            <ProductSearch 
+            <ProductSearch
               onSearch={searchByArticleNumber}
               isLoading={isLoading}
             />
-            
+
             {product && (
               <>
-                <ProductDisplay 
+                <ProductDisplay
                   product={product}
                   onAddToQuote={addToQuote}
                 />
-                
-                <ProductMockup 
+
+                <ProductMockup
                   product={{
                     id: product.id,
                     name: product.name,
                     image_url: product.image_url,
                     price_ex_vat: product.price_ex_vat,
-                    category: product.category
+                    category: product.category,
                   }}
                   onPreviewUpdate={handlePreviewUpdate}
                 />
@@ -69,7 +70,7 @@ const Index = () => {
             )}
           </div>
 
-          {/* ✅ Höger sida - Offertlista och mockup-preview */}
+          {/* Höger kolumn: offert och mockup-preview */}
           <div className="space-y-6">
             <QuoteList
               quote={quote}
@@ -79,8 +80,7 @@ const Index = () => {
               total={getQuoteTotal()}
               totalWithVat={getQuoteTotalWithVat()}
             />
-            
-            {/* ✅ Rätt användning av MockupPreview */}
+
             <MockupPreview 
               previewUrl={mockupPreviewUrl} 
               mockupUrl={mockupUrl} 
