@@ -15,17 +15,9 @@ interface ProductData {
 }
 
 interface MockupPreviewProps {
-  product?: {
-    id: string;
-    name: string;
-    image_url?: string;
-    price_ex_vat?: number;
-    category?: string;
-  };
   previewUrl?: string | null;
   mockupUrl?: string | null;
 }
-
 
 const MockupPreview: React.FC<MockupPreviewProps> = ({ previewUrl, mockupUrl }) => {
   const navigate = useNavigate();

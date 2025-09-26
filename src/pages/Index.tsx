@@ -82,7 +82,6 @@ const Index = () => {
             />
 
             <MockupPreview
-              product={product || undefined}
               previewUrl={mockupPreviewUrl}
               mockupUrl={mockupUrl}
             />
