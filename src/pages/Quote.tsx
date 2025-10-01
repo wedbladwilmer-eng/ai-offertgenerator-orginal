@@ -244,11 +244,15 @@ const Quote = () => {
                   {/* Product Image */}
                   <div className="space-y-4">
                     {mockupUrl ? (
-                      <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
+                      <div className="bg-white p-4 rounded-lg border flex flex-col items-center justify-center">
                         <img
                           src={mockupUrl}
                           alt="Produktmockup med logotyp"
                           className="max-h-[400px] w-auto object-contain mx-auto rounded-sm border border-border"
+                          onError={(e) => {
+                            console.error('Failed to load mockup image');
+                            e.currentTarget.src = '/placeholder.svg';
+                          }}
                         />
                         <p className="text-sm text-muted-foreground mt-2 text-center w-full">
                           Produkt med din logotyp
@@ -260,6 +264,10 @@ const Quote = () => {
                           src={product.image_url}
                           alt={product.name}
                           className="max-h-[400px] w-auto object-contain mx-auto rounded-sm border border-border"
+                          onError={(e) => {
+                            console.error('Failed to load product image from:', product.image_url);
+                            e.currentTarget.src = '/placeholder.svg';
+                          }}
                         />
                       </div>
                     ) : (

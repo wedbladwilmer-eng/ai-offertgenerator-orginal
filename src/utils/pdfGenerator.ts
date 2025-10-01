@@ -15,28 +15,21 @@ export const generatePDF = async (data: PDFData) => {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   
-  // Company logo at the top
+  // Use local logo instead of external URL
   try {
-    const logoUrl = 'https://media.licdn.com/dms/image/v2/D4D0BAQGdokXqiTIBuA/company-logo_200_200/company-logo_200_200/0/1734010375660/kosta_nada_profil_logo?e=2147483647&v=beta&t=jMm0VZG_jw7yztpxCfQUBhTUyNTqiYhiz-s_o8az0cw';
-    
-    // Create temporary div for logo loading
-    const tempDiv = document.createElement('div');
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.left = '-9999px';
-    document.body.appendChild(tempDiv);
+    const logoModule = await import('@/assets/kosta-nada-profil-logo.png');
+    const logoUrl = logoModule.default;
     
     const logoImg = document.createElement('img');
-    logoImg.crossOrigin = 'anonymous';
     logoImg.src = logoUrl;
-    tempDiv.appendChild(logoImg);
     
-    await new Promise((resolve, reject) => {
+    await new Promise((resolve) => {
       logoImg.onload = resolve;
-      logoImg.onerror = resolve; // Continue even if logo fails
-      setTimeout(resolve, 3000); // 3 second timeout
+      logoImg.onerror = resolve;
+      setTimeout(resolve, 2000);
     });
     
-    if (logoImg.complete) {
+    if (logoImg.complete && logoImg.naturalHeight > 0) {
       const logoCanvas = await html2canvas(logoImg, {
         width: 100,
         height: 100,
@@ -46,8 +39,6 @@ export const generatePDF = async (data: PDFData) => {
       const logoData = logoCanvas.toDataURL('image/png');
       pdf.addImage(logoData, 'PNG', 20, 15, 20, 20);
     }
-    
-    document.body.removeChild(tempDiv);
   } catch (error) {
     console.log('Could not add company logo to PDF:', error);
   }
@@ -83,19 +74,44 @@ export const generatePDF = async (data: PDFData) => {
   // Product info and mockup image
   const item = data.quote[0];
   
-  // Add mockup image if available
-  if (item.mockup_url) {
+  // Add mockup or product image if available
+  const imageUrl = item.mockup_url || item.product.image_url;
+  
+  if (imageUrl) {
     try {
+      console.log('Adding image to PDF:', imageUrl);
+      
+      // Use image-proxy for external images
+      const isExternalImage = imageUrl.startsWith('http') && !imageUrl.includes('supabase');
+      let finalImageUrl = imageUrl;
+      
+      if (isExternalImage) {
+        console.log('Proxying external image through image-proxy');
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data: proxyData, error: proxyError } = await supabase.functions.invoke('image-proxy', {
+          body: { imageUrl }
+        });
+        
+        if (proxyError || !proxyData?.dataUrl) {
+          console.error('Failed to proxy image:', proxyError);
+          throw new Error('Failed to load image');
+        }
+        
+        finalImageUrl = proxyData.dataUrl;
+        console.log('Image proxied successfully');
+      }
+      
       const tempDiv = document.createElement('div');
       tempDiv.style.position = 'absolute';
       tempDiv.style.left = '-9999px';
       document.body.appendChild(tempDiv);
       
       const img = document.createElement('img');
-      img.crossOrigin = 'anonymous';
-      img.src = item.mockup_url;
+      if (!finalImageUrl.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+      }
+      img.src = finalImageUrl;
 
-      // Create a container to enforce contain, centering and border
       const container = document.createElement('div');
       container.style.width = '512px';
       container.style.height = '512px';
@@ -105,7 +121,6 @@ export const generatePDF = async (data: PDFData) => {
       container.style.backgroundColor = '#ffffff';
       container.style.border = '1px solid #e5e5e5';
 
-      // Style image for contain behavior
       img.style.maxWidth = '100%';
       img.style.maxHeight = '100%';
       img.style.objectFit = 'contain';
@@ -115,11 +130,11 @@ export const generatePDF = async (data: PDFData) => {
       
       await new Promise((resolve) => {
         img.onload = resolve as any;
-        img.onerror = resolve as any; // Continue even if image fails
+        img.onerror = resolve as any;
         setTimeout(resolve, 5000);
       });
       
-      if (img.complete) {
+      if (img.complete && img.naturalHeight > 0) {
         const canvas = await html2canvas(container, {
           width: 512,
           height: 512,
@@ -128,13 +143,15 @@ export const generatePDF = async (data: PDFData) => {
         });
         
         const imgData = canvas.toDataURL('image/png');
-        // Add image smaller (~30% zoomed out vs previous 80mm)
         pdf.addImage(imgData, 'PNG', 20, yPosition, 56, 56);
+        console.log('Image added to PDF successfully');
+      } else {
+        console.log('Image not loaded properly');
       }
       
       document.body.removeChild(tempDiv);
     } catch (error) {
-      console.log('Could not add mockup image to PDF:', error);
+      console.error('Could not add image to PDF:', error);
     }
   }
   

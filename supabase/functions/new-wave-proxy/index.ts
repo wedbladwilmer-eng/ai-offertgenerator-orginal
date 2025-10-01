@@ -14,7 +14,10 @@ serve(async (req) => {
   try {
     const { articleNumber } = await req.json()
     
+    console.log('Received request for article:', articleNumber)
+    
     if (!articleNumber) {
+      console.error('No article number provided')
       return new Response(
         JSON.stringify({ error: 'Article number is required' }), 
         { 
@@ -27,6 +30,8 @@ serve(async (req) => {
     // Make request to New Wave API
     const newWaveUrl = `https://commerce.gateway.nwg.se/assortment/sv/products?products=${articleNumber}&assortmentIds=152611&assortmentIds=153639`
     
+    console.log('Fetching from New Wave API:', newWaveUrl)
+    
     const response = await fetch(newWaveUrl, {
       headers: {
         'Accept': 'application/json',
@@ -34,13 +39,18 @@ serve(async (req) => {
       }
     })
 
+    console.log('New Wave API response status:', response.status)
+
     if (!response.ok) {
+      console.error('New Wave API error:', response.status, response.statusText)
       throw new Error(`New Wave API responded with status: ${response.status}`)
     }
 
     const data = await response.json()
+    console.log('Received data from New Wave API, products count:', data?.length || 0)
     
     if (!data || data.length === 0) {
+      console.error('No products found for article:', articleNumber)
       return new Response(
         JSON.stringify({ error: 'Product not found' }), 
         { 
@@ -52,6 +62,7 @@ serve(async (req) => {
 
     // Transform the data to match our expected format
     const product = data[0]
+    console.log('Processing product:', product.productNumber || product.id)
     const transformedProduct = {
       id: product.productNumber || product.id,
       name: product.productName || product.name,
@@ -70,6 +81,8 @@ serve(async (req) => {
         : 'Högkvalitativ produkt perfekt för profilering.'
     }
 
+    console.log('Successfully transformed product data')
+    
     return new Response(
       JSON.stringify(transformedProduct), 
       { 
@@ -79,6 +92,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in new-wave-proxy:', error)
+    console.error('Error details:', error instanceof Error ? error.stack : 'Unknown error')
     return new Response(
       JSON.stringify({ 
         error: 'Failed to fetch product data', 
