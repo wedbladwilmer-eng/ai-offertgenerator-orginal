@@ -27,22 +27,37 @@ serve(async (req) => {
       )
     }
 
-    // Make request to New Wave API
-    const newWaveUrl = `https://commerce.gateway.nwg.se/assortment/sv/products?products=${articleNumber}&assortmentIds=152611&assortmentIds=153639`
-    
-    console.log('Fetching from New Wave API:', newWaveUrl)
-    
-    const response = await fetch(newWaveUrl, {
-      headers: {
-        'Accept': 'application/json'
+    // Try multiple URL formats in case the API expects different parameter styles
+    const candidateUrls = [
+      `https://commerce.gateway.nwg.se/assortment/sv/products?products=${articleNumber}&assortmentIds=152611&assortmentIds=153639`,
+      `https://commerce.gateway.nwg.se/assortment/sv/products?products=${articleNumber}&assortmentIds=152611,153639`,
+      `https://commerce.gateway.nwg.se/assortment/sv/products?products=${articleNumber}`
+    ]
+
+    let response: Response | null = null
+    let lastStatus: number | undefined
+    let lastStatusText = ''
+
+    for (const url of candidateUrls) {
+      console.log('Fetching from New Wave API:', url)
+      const r = await fetch(url, {
+        headers: {
+          'Accept': 'application/json'
+        }
+      })
+      console.log('New Wave API response status:', r.status)
+      if (r.ok) {
+        response = r
+        break
+      } else {
+        lastStatus = r.status
+        lastStatusText = r.statusText
+        console.error('New Wave API error for URL:', url, r.status, r.statusText)
       }
-    })
+    }
 
-    console.log('New Wave API response status:', response.status)
-
-    if (!response.ok) {
-      console.error('New Wave API error:', response.status, response.statusText)
-      throw new Error(`New Wave API responded with status: ${response.status}`)
+    if (!response) {
+      throw new Error(`New Wave API responded with status: ${lastStatus} ${lastStatusText}`)
     }
 
     const data = await response.json()
