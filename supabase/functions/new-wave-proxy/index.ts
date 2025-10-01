@@ -34,8 +34,7 @@ serve(async (req) => {
     
     const response = await fetch(newWaveUrl, {
       headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; OffertskapareBotBot/1.0)'
+        'Accept': 'application/json'
       }
     })
 
