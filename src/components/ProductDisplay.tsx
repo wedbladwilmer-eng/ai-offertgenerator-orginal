@@ -15,6 +15,13 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
   const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
 
+  // 🖼️ Välj bildkälla
+  const imageUrl =
+    product.image_url ||
+    (product.pictures && product.pictures.length > 0
+      ? `https://media.nwgmedia.com/${product.pictures[0].fileName}.jpg`
+      : null);
+
   const handleAddToQuote = () => {
     if (quantity > 0) {
       onAddToQuote(product, quantity);
@@ -27,8 +34,6 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
     return `${price.toLocaleString("sv-SE")} kr`;
   };
 
-  console.log("🖼️ Rendering product image URL:", product?.image_url);
-
   return (
     <Card>
       <CardHeader>
@@ -38,28 +43,30 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
       <CardContent className="space-y-4">
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            {product?.image_url ? (
+            {imageUrl && !imageError ? (
               <img
-                src={imageError ? "/placeholder.svg" : product.image_url}
-                alt={product?.name || "Produktbild"}
+                src={imageUrl}
+                alt={product.name}
                 className="w-full h-64 object-contain rounded-lg border bg-white"
                 onError={() => setImageError(true)}
               />
             ) : (
-              <p className="text-sm text-muted-foreground">Ingen bild tillgänglig</p>
+              <div className="w-full h-64 flex items-center justify-center border rounded-lg bg-muted text-muted-foreground">
+                Ingen bild tillgänglig
+              </div>
             )}
           </div>
 
           <div className="space-y-4">
             <div>
-              <h3 className="text-xl font-semibold">{product?.name}</h3>
-              <p className="text-muted-foreground">Artikelnummer: {product?.id}</p>
-              {product?.brand && (
+              <h3 className="text-xl font-semibold">{product.name}</h3>
+              <p className="text-muted-foreground">Artikelnummer: {product.id}</p>
+              {product.brand && (
                 <p className="text-sm text-muted-foreground">Märke: {product.brand}</p>
               )}
             </div>
 
-            {product?.description && (
+            {product.description && (
               <div>
                 <Label>Beskrivning</Label>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -70,17 +77,19 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
 
             <div>
               <Label>Pris (inkl. moms)</Label>
-              <p className="text-lg font-semibold">{formatPrice(product?.price_ex_vat)}</p>
+              <p className="text-lg font-semibold">
+                {formatPrice(product.price_ex_vat)}
+              </p>
             </div>
 
-            {product?.category && (
+            {product.category && (
               <div>
                 <Label>Kategori</Label>
                 <p className="text-sm text-muted-foreground">{product.category}</p>
               </div>
             )}
 
-            {product?.variations && product.variations.length > 0 && (
+            {product.variations && product.variations.length > 0 && (
               <div>
                 <Label>Tillgängliga färger</Label>
                 <div className="flex flex-wrap gap-2 mt-1">
