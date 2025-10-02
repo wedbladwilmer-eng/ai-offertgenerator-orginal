@@ -16,27 +16,43 @@ serve(async (req) => {
     
     console.log('Received request for article:', articleNumber)
     
-    if (!articleNumber) {
+    const raw = String(articleNumber ?? '').trim()
+    if (!raw) {
       console.error('No article number provided')
       return new Response(
-        JSON.stringify({ error: 'Article number is required' }), 
-        { 
-          status: 400, 
+        JSON.stringify({ error: 'Article number is required' }),
+        {
+          status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
 
+    if (!/^\d{6,}$/.test(raw)) {
+      console.error('Invalid article number format:', raw)
+      return new Response(
+        JSON.stringify({ error: 'Invalid article number. Use digits only, minimum 6 characters.' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    const normalizedArticleNumber = raw
+
     // Try multiple URL formats in case the API expects different parameter styles
     const candidateUrls = [
-      `https://commerce.gateway.nwg.se/assortment/sv/products?products=${articleNumber}&assortmentIds=152611&assortmentIds=153639`,
-      `https://commerce.gateway.nwg.se/assortment/sv/products?products=${articleNumber}&assortmentIds=152611,153639`,
-      `https://commerce.gateway.nwg.se/assortment/sv/products?products=${articleNumber}`
+      `https://commerce.gateway.nwg.se/assortment/sv/products?products=${normalizedArticleNumber}&assortmentIds=152611,153639`,
+      `https://commerce.gateway.nwg.se/assortment/sv/products?products=${normalizedArticleNumber}`,
+      `https://commerce.gateway.nwg.se/assortment/sv/products?productNumbers=${normalizedArticleNumber}`,
+      `https://commerce.gateway.nwg.se/assortment/sv/products/${normalizedArticleNumber}`
     ]
 
     let response: Response | null = null
     let lastStatus: number | undefined
     let lastStatusText = ''
+    let lastBody: string | undefined
 
     for (const url of candidateUrls) {
       console.log('Fetching from New Wave API:', url)
@@ -52,8 +68,26 @@ serve(async (req) => {
       } else {
         lastStatus = r.status
         lastStatusText = r.statusText
-        console.error('New Wave API error for URL:', url, r.status, r.statusText)
+        try {
+          lastBody = await r.text()
+          console.error('New Wave API error for URL:', url, r.status, r.statusText, 'Body:', lastBody?.slice(0, 500))
+        } catch (_) {
+          console.error('New Wave API error for URL (no body):', url, r.status, r.statusText)
+        }
       }
+    }
+
+    if (!response) {
+      return new Response(
+        JSON.stringify({
+          error: 'Product fetch failed',
+          details: { lastStatus, lastStatusText, lastBody }
+        }),
+        {
+          status: lastStatus && lastStatus >= 400 && lastStatus < 600 ? lastStatus : 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     if (!response) {
@@ -61,10 +95,11 @@ serve(async (req) => {
     }
 
     const data = await response.json()
-    console.log('Received data from New Wave API, products count:', data?.length || 0)
+    const products = Array.isArray(data) ? data : (Array.isArray(data?.products) ? data.products : [])
+    console.log('Received data from New Wave API, products count:', products.length || 0)
     
-    if (!data || data.length === 0) {
-      console.error('No products found for article:', articleNumber)
+    if (!products || products.length === 0) {
+      console.error('No products found for article:', normalizedArticleNumber)
       return new Response(
         JSON.stringify({ error: 'Product not found' }), 
         { 
@@ -75,7 +110,7 @@ serve(async (req) => {
     }
 
     // Transform the data to match our expected format
-    const product = data[0]
+    const product = products[0]
     console.log('Processing product:', product.productNumber || product.id)
     const transformedProduct = {
       id: product.productNumber || product.id,
