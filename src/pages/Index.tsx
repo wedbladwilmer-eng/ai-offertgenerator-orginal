@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ProductDisplay } from '@/components/ProductDisplay';
+import ProductDisplay from '@/components/ProductDisplay';
 import { QuoteList } from '@/components/QuoteList';
 import ProductMockup from '@/components/ui/ProductMockup';
 import MockupPreview from '@/components/MockupPreview';
