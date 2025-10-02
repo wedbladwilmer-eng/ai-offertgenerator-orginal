@@ -14,20 +14,7 @@ export const ProductSearch = ({ onSearch, isLoading }: ProductSearchProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (articleNumber.trim()) {
-      onSearch(articleNumber.trim());
-    }
-  };
-
-  // Auto-search when user types enough characters
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setArticleNumber(value);
-    
-    // Auto-search when user has typed at least 5 characters
-    if (value.length >= 5 && !isLoading) {
-      onSearch(value.trim());
-    }
+    onSearch(articleNumber);
   };
 
   return (
@@ -41,7 +28,7 @@ export const ProductSearch = ({ onSearch, isLoading }: ProductSearchProps) => {
             type="text"
             placeholder="Ange artikelnummer (t.ex. 1914706)"
             value={articleNumber}
-            onChange={handleInputChange}
+            onChange={(e) => setArticleNumber(e.target.value)}
             className="flex-1"
           />
           <Button type="submit" disabled={isLoading}>

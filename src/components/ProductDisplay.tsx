@@ -1,19 +1,18 @@
-import { useState } from "react";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import type { Product } from "@/hooks/useProducts";
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import type { Product } from '@/hooks/useProducts';
 
 interface ProductDisplayProps {
   product: Product;
   onAddToQuote: (product: Product, quantity: number) => void;
 }
 
-const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
+export const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
   const [quantity, setQuantity] = useState(1);
-  const [imageError, setImageError] = useState(false);
 
   const handleAddToQuote = () => {
     if (quantity > 0) {
@@ -23,8 +22,8 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
   };
 
   const formatPrice = (price: number | null) => {
-    if (!price) return "Pris på förfrågan";
-    return `${price.toLocaleString("sv-SE")} kr`;
+    if (!price) return 'Pris på förfrågan';
+    return `${price.toLocaleString('sv-SE')} kr`;
   };
 
   return (
@@ -32,35 +31,24 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
       <CardHeader>
         <CardTitle>Produktinformation</CardTitle>
       </CardHeader>
-
       <CardContent className="space-y-4">
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <img
-              src={
-                imageError
-                  ? "/placeholder.svg" // 🔁 fallback-bild om originalet misslyckas
-                  : product.image_url
-              }
-              alt={product.name}
-              className="w-full h-64 object-contain rounded-lg border"
-              onError={() => setImageError(true)} // ✅ enkel fallback
-            />
+            {product.image_url && (
+              <img
+                src={product.image_url}
+                alt={product.name}
+                className="w-full h-64 object-contain rounded-lg border"
+              />
+            )}
           </div>
-
+          
           <div className="space-y-4">
             <div>
               <h3 className="text-xl font-semibold">{product.name}</h3>
-              <p className="text-muted-foreground">
-                Artikelnummer: {product.id}
-              </p>
-              {product.brand && (
-                <p className="text-sm text-muted-foreground">
-                  Märke: {product.brand}
-                </p>
-              )}
+              <p className="text-muted-foreground">Artikelnummer: {product.id}</p>
             </div>
-
+            
             {product.description && (
               <div>
                 <Label>Beskrivning</Label>
@@ -69,14 +57,14 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
                 </p>
               </div>
             )}
-
+            
             <div>
-              <Label>Pris (inkl. moms)</Label>
+              <Label>Pris (exkl. moms)</Label>
               <p className="text-lg font-semibold">
                 {formatPrice(product.price_ex_vat)}
               </p>
             </div>
-
+            
             {product.category && (
               <div>
                 <Label>Kategori</Label>
@@ -85,25 +73,9 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
                 </p>
               </div>
             )}
-
-            {product.variations && product.variations.length > 0 && (
-              <div>
-                <Label>Tillgängliga färger</Label>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {product.variations.map((variation, index) => (
-                    <span
-                      key={index}
-                      className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded"
-                    >
-                      {variation.color}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
-
+        
         <div className="border-t pt-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
@@ -113,9 +85,7 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
                 type="number"
                 min="1"
                 value={quantity}
-                onChange={(e) =>
-                  setQuantity(Math.max(1, parseInt(e.target.value) || 1))
-                }
+                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                 className="w-20"
               />
             </div>
@@ -129,5 +99,3 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
     </Card>
   );
 };
-
-export default ProductDisplay;

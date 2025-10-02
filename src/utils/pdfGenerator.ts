@@ -15,43 +15,10 @@ export const generatePDF = async (data: PDFData) => {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   
-  // Use local logo instead of external URL
-  try {
-    const logoModule = await import('@/assets/kosta-nada-profil-logo.png');
-    const logoUrl = logoModule.default;
-    
-    const logoImg = document.createElement('img');
-    logoImg.src = logoUrl;
-    
-    await new Promise((resolve) => {
-      logoImg.onload = resolve;
-      logoImg.onerror = resolve;
-      setTimeout(resolve, 2000);
-    });
-    
-    if (logoImg.complete && logoImg.naturalHeight > 0) {
-      const logoCanvas = await html2canvas(logoImg, {
-        width: 100,
-        height: 100,
-        scale: 1
-      });
-      
-      const logoData = logoCanvas.toDataURL('image/png');
-      pdf.addImage(logoData, 'PNG', 20, 15, 20, 20);
-    }
-  } catch (error) {
-    console.log('Could not add company logo to PDF:', error);
-  }
-  
-  // Company name next to logo
-  pdf.setFontSize(16);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('Kosta Nada Profil AB', 45, 25);
-  
   // Header
-  pdf.setFontSize(24);
+  pdf.setFontSize(20);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('OFFERT', pageWidth / 2, 50, { align: 'center' });
+  pdf.text('OFFERT', pageWidth / 2, 20, { align: 'center' });
   
   // Date and quote number
   const today = new Date().toLocaleDateString('sv-SE');
@@ -59,174 +26,151 @@ export const generatePDF = async (data: PDFData) => {
   
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(`Datum: ${today}`, pageWidth / 2 - 25, 60, { align: 'center' });
-  pdf.text(`Offertnummer: ${quoteNumber}`, pageWidth / 2 + 25, 60, { align: 'center' });
+  pdf.text(`Datum: ${today}`, 20, 35);
+  pdf.text(`Offertnummer: ${quoteNumber}`, 20, 40);
   
   // Customer info
   pdf.setFontSize(12);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('Kund:', 20, 75);
+  pdf.text('Kund:', 20, 55);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(data.companyName, 20, 82);
+  pdf.text(data.companyName, 20, 62);
+  pdf.text(data.customerName, 20, 69);
   
-  let yPosition = 100;
+  let yPosition = 85;
   
-  // Product info and mockup image
-  const item = data.quote[0];
+  // Products header
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Produkter:', 20, yPosition);
+  yPosition += 10;
   
-  // Add mockup or product image if available
-  const imageUrl = item.mockup_url || item.product.image_url;
+  // Table headers
+  pdf.setFontSize(10);
+  pdf.text('Art.nr', 20, yPosition);
+  pdf.text('Produkt', 45, yPosition);
+  pdf.text('Antal', 120, yPosition);
+  pdf.text('Pris/st', 140, yPosition);
+  pdf.text('Summa', 170, yPosition);
   
-  if (imageUrl) {
-    try {
-      console.log('Adding image to PDF:', imageUrl);
-      
-      // Use image-proxy for external images
-      const isExternalImage = imageUrl.startsWith('http') && !imageUrl.includes('supabase');
-      let finalImageUrl = imageUrl;
-      
-      if (isExternalImage) {
-        console.log('Proxying external image through image-proxy');
-        const { supabase } = await import('@/integrations/supabase/client');
-        const { data: proxyData, error: proxyError } = await supabase.functions.invoke('image-proxy', {
-          body: { imageUrl }
+  yPosition += 5;
+  pdf.line(20, yPosition, pageWidth - 20, yPosition); // Header line
+  yPosition += 10;
+  
+  // Products
+  pdf.setFont('helvetica', 'normal');
+  for (const item of data.quote) {
+    if (yPosition > pageHeight - 40) {
+      pdf.addPage();
+      yPosition = 20;
+    }
+    
+    const price = item.product.price_ex_vat || 0;
+    const sum = price * item.quantity;
+    
+    pdf.text(item.product.id, 20, yPosition);
+    
+    // Handle long product names
+    const productName = item.product.name;
+    if (productName.length > 30) {
+      const lines = pdf.splitTextToSize(productName, 70);
+      pdf.text(lines[0], 45, yPosition);
+      if (lines.length > 1) {
+        yPosition += 5;
+        pdf.text(lines[1], 45, yPosition);
+      }
+    } else {
+      pdf.text(productName, 45, yPosition);
+    }
+    
+    pdf.text(item.quantity.toString(), 120, yPosition);
+    pdf.text(`${price.toLocaleString('sv-SE')} kr`, 140, yPosition);
+    pdf.text(`${sum.toLocaleString('sv-SE')} kr`, 170, yPosition);
+    
+    yPosition += 15;
+    
+    // Add mockup image if available
+    if (item.mockup_url) {
+      try {
+        // Create temporary div for image loading
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        document.body.appendChild(tempDiv);
+        
+        const img = document.createElement('img');
+        img.crossOrigin = 'anonymous';
+        img.src = item.mockup_url;
+        tempDiv.appendChild(img);
+        
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          setTimeout(reject, 5000); // 5 second timeout
         });
         
-        if (proxyError || !proxyData?.dataUrl) {
-          console.error('Failed to proxy image:', proxyError);
-          throw new Error('Failed to load image');
-        }
-        
-        finalImageUrl = proxyData.dataUrl;
-        console.log('Image proxied successfully');
-      }
-      
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      document.body.appendChild(tempDiv);
-      
-      const img = document.createElement('img');
-      if (!finalImageUrl.startsWith('data:')) {
-        img.crossOrigin = 'anonymous';
-      }
-      img.src = finalImageUrl;
-
-      const container = document.createElement('div');
-      container.style.width = '512px';
-      container.style.height = '512px';
-      container.style.display = 'flex';
-      container.style.alignItems = 'center';
-      container.style.justifyContent = 'center';
-      container.style.backgroundColor = '#ffffff';
-      container.style.border = '1px solid #e5e5e5';
-
-      img.style.maxWidth = '100%';
-      img.style.maxHeight = '100%';
-      img.style.objectFit = 'contain';
-
-      container.appendChild(img);
-      tempDiv.appendChild(container);
-      
-      await new Promise((resolve) => {
-        img.onload = resolve as any;
-        img.onerror = resolve as any;
-        setTimeout(resolve, 5000);
-      });
-      
-      if (img.complete && img.naturalHeight > 0) {
-        const canvas = await html2canvas(container, {
-          width: 512,
-          height: 512,
-          scale: 1,
-          backgroundColor: '#ffffff',
+        const canvas = await html2canvas(img, {
+          width: 200,
+          height: 200,
+          scale: 1
         });
         
         const imgData = canvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', 20, yPosition, 56, 56);
-        console.log('Image added to PDF successfully');
-      } else {
-        console.log('Image not loaded properly');
+        
+        if (yPosition > pageHeight - 60) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
+        pdf.addImage(imgData, 'PNG', 45, yPosition, 40, 40);
+        yPosition += 45;
+        
+        document.body.removeChild(tempDiv);
+      } catch (error) {
+        console.log('Could not add mockup image to PDF:', error);
+        // Continue without image
       }
-      
-      document.body.removeChild(tempDiv);
-    } catch (error) {
-      console.error('Could not add image to PDF:', error);
     }
   }
   
-  // Product details next to image
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text(item.product.name, 110, yPosition + 10);
-  
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text(`Artikelnummer: ${item.product.id}`, 110, yPosition + 20);
-  if (item.product.category) {
-    pdf.text(`Kategori: ${item.product.category}`, 110, yPosition + 27);
+  // Total section
+  if (yPosition > pageHeight - 60) {
+    pdf.addPage();
+    yPosition = 20;
   }
   
-  yPosition += 95;
-  
-  // Pricing table header
-  pdf.setFontSize(12);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('Prissättning', 20, yPosition);
-  yPosition += 10;
-  
-  // Table header with background
-  pdf.setFillColor(240, 240, 240);
-  pdf.rect(20, yPosition, pageWidth - 40, 8, 'F');
-  
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('Artikelnummer', 25, yPosition + 5);
-  pdf.text('Pris/st (inkl. moms)', 70, yPosition + 5);
-  pdf.text('Antal', 125, yPosition + 5);
-  pdf.text('Totalpris', 150, yPosition + 5);
-  
-  yPosition += 8;
-  
-  // Table content
-  pdf.setFont('helvetica', 'normal');
-  const price = (item.product.price_ex_vat || 0) * 2; // 1:2 ratio
-  const totalPrice = price * item.quantity;
-  
-  pdf.text(item.product.id, 25, yPosition + 5);
-  pdf.text(`${price.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr`, 70, yPosition + 5);
-  pdf.text(item.quantity.toString(), 125, yPosition + 5);
-  pdf.text(`${totalPrice.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr`, 150, yPosition + 5);
-  
-  yPosition += 15;
-  
-  // Total section
   yPosition += 10;
   pdf.line(20, yPosition, pageWidth - 20, yPosition);
   yPosition += 10;
   
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('TOTALT (inkl. moms):', 25, yPosition);
-  pdf.text(`${totalPrice.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr`, 150, yPosition);
-  
-  // Terms
-  yPosition += 25;
-  
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('Villkor och bestämmelser:', 20, yPosition);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('Totalt (exkl. moms):', 120, yPosition);
+  pdf.text(`${data.total.toLocaleString('sv-SE')} kr`, 170, yPosition);
   yPosition += 7;
   
-  pdf.setFontSize(9);
+  pdf.text('Moms (25%):', 120, yPosition);
+  pdf.text(`${(data.totalWithVat - data.total).toLocaleString('sv-SE')} kr`, 170, yPosition);
+  yPosition += 7;
+  
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('TOTALT (inkl. moms):', 120, yPosition);
+  pdf.text(`${data.totalWithVat.toLocaleString('sv-SE')} kr`, 170, yPosition);
+  
+  // Terms
+  yPosition += 20;
+  if (yPosition > pageHeight - 40) {
+    pdf.addPage();
+    yPosition = 20;
+  }
+  
+  pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
-  pdf.text('• Offerten gäller i 30 dagar från utställningsdatum', 20, yPosition);
+  pdf.text('Villkor:', 20, yPosition);
   yPosition += 5;
-  pdf.text('• Leveranstid: 2-3 veckor från godkänd beställning', 20, yPosition);
-  yPosition += 5;
+  pdf.text('• Offerten gäller i 30 dagar från datum', 20, yPosition);
+  yPosition += 4;
+  pdf.text('• Leveranstid: 2-3 veckor från godkänd order', 20, yPosition);
+  yPosition += 4;
   pdf.text('• Betalningsvillkor: 30 dagar netto', 20, yPosition);
-  yPosition += 5;
-  pdf.text('• Alla priser anges inklusive moms där inget annat anges', 20, yPosition);
   
   // Save PDF
   const fileName = `Offert_${data.companyName.replace(/[^a-zA-Z0-9]/g, '_')}_${quoteNumber}.pdf`;
