@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export type Product = {
   id: string;
@@ -10,6 +10,9 @@ export type Product = {
   image_url: string | null;
   category: string | null;
   logo_position: string | null;
+  brand?: string;
+  slug?: string;
+  variations?: Array<{ color: string }>;
 };
 
 export type QuoteItem = {
@@ -25,6 +28,28 @@ export const useProducts = () => {
   const [quote, setQuote] = useState<QuoteItem[]>([]);
   const { toast } = useToast();
 
+  // Function to fetch product data via Supabase Edge Function
+  const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('new-wave-proxy', {
+        body: { articleNumber }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to fetch product data');
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      return data as Product;
+    } catch (error) {
+      console.error('Error fetching from New Wave API:', error);
+      throw error;
+    }
+  };
+
   const searchByArticleNumber = async (articleNumber: string) => {
     if (!articleNumber.trim()) {
       toast({
@@ -37,24 +62,9 @@ export const useProducts = () => {
 
     setIsLoading(true);
     try {
-      // Use RPC or direct query to bypass strict typing
-      const { data, error } = await (supabase as any)
-        .from('products')
-        .select('*')
-        .eq('id', articleNumber.trim())
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching product:', error);
-        toast({
-          title: "Fel",
-          description: "Det gick inte att hämta produkten",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!data) {
+      const productData = await fetchProductData(articleNumber.trim());
+      
+      if (!productData) {
         toast({
           title: "Produkt ej hittad",
           description: `Ingen produkt med artikelnummer ${articleNumber} hittades`,
@@ -64,7 +74,6 @@ export const useProducts = () => {
         return;
       }
 
-      const productData = data as Product;
       setProduct(productData);
       toast({
         title: "Produkt hittad",
@@ -74,7 +83,7 @@ export const useProducts = () => {
       console.error('Error:', error);
       toast({
         title: "Fel",
-        description: "Ett oväntat fel inträffade",
+        description: "Det gick inte att hämta produkten från New Wave",
         variant: "destructive",
       });
     } finally {
