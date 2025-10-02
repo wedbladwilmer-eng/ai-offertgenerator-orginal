@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import type { Product } from "@/hooks/useProducts";
+import ProductDisplay from "@/components/ProductDisplay";  // 👈 Lägg till denna
+
 
 
 interface ProductDisplayProps {
