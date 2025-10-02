@@ -15,13 +15,6 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
   const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
 
-  // 🖼️ Välj bildkälla
-  const imageUrl =
-    product.image_url ||
-    (product.pictures && product.pictures.length > 0
-      ? `https://media.nwgmedia.com/${product.pictures[0].fileName}.jpg`
-      : null);
-
   const handleAddToQuote = () => {
     if (quantity > 0) {
       onAddToQuote(product, quantity);
@@ -34,6 +27,9 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
     return `${price.toLocaleString("sv-SE")} kr`;
   };
 
+  // 👀 Debug-logg – ta bort när allt fungerar
+  console.log("🧪 Produktdata i frontend:", product);
+
   return (
     <Card>
       <CardHeader>
@@ -42,27 +38,34 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
 
       <CardContent className="space-y-4">
         <div className="grid md:grid-cols-2 gap-6">
+          {/* 🖼️ Produktbild */}
           <div>
-            {imageUrl && !imageError ? (
+            {product.image_url ? (
               <img
-                src={imageUrl}
-                alt={product.name}
+                src={imageError ? "/placeholder.svg" : product.image_url}
+                alt={product.name || "Produktbild"}
                 className="w-full h-64 object-contain rounded-lg border bg-white"
-                onError={() => setImageError(true)}
+                onError={(e) => {
+                  console.error("🚨 Bilden kunde inte laddas:", product.image_url);
+                  setImageError(true);
+                }}
               />
             ) : (
-              <div className="w-full h-64 flex items-center justify-center border rounded-lg bg-muted text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Ingen bild tillgänglig
-              </div>
+              </p>
             )}
           </div>
 
+          {/* 📦 Produktinfo */}
           <div className="space-y-4">
             <div>
               <h3 className="text-xl font-semibold">{product.name}</h3>
               <p className="text-muted-foreground">Artikelnummer: {product.id}</p>
               {product.brand && (
-                <p className="text-sm text-muted-foreground">Märke: {product.brand}</p>
+                <p className="text-sm text-muted-foreground">
+                  Märke: {product.brand}
+                </p>
               )}
             </div>
 
@@ -76,7 +79,7 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
             )}
 
             <div>
-              <Label>Pris (inkl. moms)</Label>
+              <Label>Pris (exkl. moms)</Label>
               <p className="text-lg font-semibold">
                 {formatPrice(product.price_ex_vat)}
               </p>
@@ -85,7 +88,9 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
             {product.category && (
               <div>
                 <Label>Kategori</Label>
-                <p className="text-sm text-muted-foreground">{product.category}</p>
+                <p className="text-sm text-muted-foreground">
+                  {product.category}
+                </p>
               </div>
             )}
 
@@ -107,6 +112,7 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
           </div>
         </div>
 
+        {/* ➕ Lägg till i offert */}
         <div className="border-t pt-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
