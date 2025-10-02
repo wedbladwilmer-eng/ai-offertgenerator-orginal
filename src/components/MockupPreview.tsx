@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { z } from 'zod';
 
 interface ProductData {
   id: string;
@@ -27,34 +26,21 @@ const MockupPreview: React.FC<MockupPreviewProps> = ({ previewUrl, mockupUrl }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const requestIdRef = useRef(0);
-  const debounceTimerRef = useRef<number | null>(null);
-  const articleSchema = z.string().trim().regex(/^\d+$/, { message: 'Endast siffror' }).min(6, { message: 'Minst 6 siffror' });
-
   // Use the same product fetching logic as useProducts hook
   const fetchProductData = async (article: string) => {
-    const localId = ++requestIdRef.current;
     setLoading(true);
     setError('');
     try {
-      const parsed = articleSchema.safeParse(article);
-      if (!parsed.success) {
-        throw new Error(parsed.error.issues[0]?.message || 'Ogiltigt artikelnummer');
-      }
-
       const { data, error } = await supabase.functions.invoke('new-wave-proxy', {
-        body: { articleNumber: article.trim() }
+        body: { articleNumber: article }
       });
-
-      if (localId !== requestIdRef.current) return;
 
       if (error) {
         throw new Error(error.message || 'Kunde inte hämta produktdata');
       }
 
-      if (data?.error) {
-        const details = data?.details ? ` – ${typeof data.details === 'string' ? data.details : JSON.stringify(data.details)}` : '';
-        throw new Error(`${data.error}${details}`);
+      if (data.error) {
+        throw new Error(data.error);
       }
 
       // Transform to local ProductData format
@@ -68,28 +54,11 @@ const MockupPreview: React.FC<MockupPreviewProps> = ({ previewUrl, mockupUrl }) 
       });
     } catch (err: any) {
       console.error(err);
-      if (localId !== requestIdRef.current) return;
       setError(err.message || 'Något gick fel vid hämtning av produktdata');
-      setProduct(null);
     } finally {
-      if (localId === requestIdRef.current) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (!articleNumber) return;
-    const parsed = articleSchema.safeParse(articleNumber);
-    if (!parsed.success) return;
-    if (debounceTimerRef.current) window.clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = window.setTimeout(() => {
-      fetchProductData(articleNumber);
-    }, 500);
-    return () => {
-      if (debounceTimerRef.current) window.clearTimeout(debounceTimerRef.current);
-    };
-  }, [articleNumber]);
 
   return (
     <div className="space-y-4">
@@ -100,22 +69,16 @@ const MockupPreview: React.FC<MockupPreviewProps> = ({ previewUrl, mockupUrl }) 
         <CardContent className="space-y-4">
           <Input
             type="text"
-            inputMode="numeric"
-            pattern="\\d*"
-            placeholder="Ange artikelnummer (minst 6 siffror, t.ex. 354418)"
+            placeholder="Ange artikelnummer (t.ex. 354418)"
             value={articleNumber}
             onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, '');
+              const value = e.target.value;
               setArticleNumber(value);
-              setError('');
+              if (value.length > 4) {
+                fetchProductData(value);
+              }
             }}
           />
-          <Button
-            onClick={() => fetchProductData(articleNumber)}
-            disabled={loading || !articleSchema.safeParse(articleNumber).success}
-          >
-            {loading ? 'Hämtar...' : 'Hämta produkt'}
-          </Button>
           {loading && <p className="text-sm text-muted-foreground">Hämtar produktdata...</p>}
           {error && <p className="text-sm text-red-600">{error}</p>}
         </CardContent>
