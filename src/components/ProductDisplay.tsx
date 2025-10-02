@@ -5,9 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import type { Product } from "@/hooks/useProducts";
-import ProductDisplay from "@/components/ProductDisplay";  // 👈 Lägg till denna
-
-
 
 interface ProductDisplayProps {
   product: Product;
@@ -16,6 +13,7 @@ interface ProductDisplayProps {
 
 const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
   const [quantity, setQuantity] = useState(1);
+  const [imageError, setImageError] = useState(false);
 
   const handleAddToQuote = () => {
     if (quantity > 0) {
@@ -34,32 +32,32 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
       <CardHeader>
         <CardTitle>Produktinformation</CardTitle>
       </CardHeader>
+
       <CardContent className="space-y-4">
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            {product.image_url ? (
-              <img
-                src={product.image_url}
-                alt={product.name}
-                className="w-full h-64 object-contain rounded-lg border bg-white"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                  const fallback = document.createElement("p");
-                  fallback.textContent = "Bild kunde inte laddas.";
-                  e.target.parentNode?.appendChild(fallback);
-                }}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">Ingen bild tillgänglig</p>
-            )}
+            <img
+              src={
+                imageError
+                  ? "/placeholder.svg" // 🔁 fallback-bild om originalet misslyckas
+                  : product.image_url
+              }
+              alt={product.name}
+              className="w-full h-64 object-contain rounded-lg border"
+              onError={() => setImageError(true)} // ✅ enkel fallback
+            />
           </div>
 
           <div className="space-y-4">
             <div>
               <h3 className="text-xl font-semibold">{product.name}</h3>
-              <p className="text-muted-foreground">Artikelnummer: {product.id}</p>
+              <p className="text-muted-foreground">
+                Artikelnummer: {product.id}
+              </p>
               {product.brand && (
-                <p className="text-sm text-muted-foreground">Märke: {product.brand}</p>
+                <p className="text-sm text-muted-foreground">
+                  Märke: {product.brand}
+                </p>
               )}
             </div>
 
@@ -74,13 +72,17 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
 
             <div>
               <Label>Pris (inkl. moms)</Label>
-              <p className="text-lg font-semibold">{formatPrice(product.price_ex_vat)}</p>
+              <p className="text-lg font-semibold">
+                {formatPrice(product.price_ex_vat)}
+              </p>
             </div>
 
             {product.category && (
               <div>
                 <Label>Kategori</Label>
-                <p className="text-sm text-muted-foreground">{product.category}</p>
+                <p className="text-sm text-muted-foreground">
+                  {product.category}
+                </p>
               </div>
             )}
 
