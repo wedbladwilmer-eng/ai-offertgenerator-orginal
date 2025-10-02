@@ -27,6 +27,11 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
     return `${price.toLocaleString("sv-SE")} kr`;
   };
 
+  const handleImageError = () => {
+    console.warn("⚠️ Produktbild kunde inte laddas:", product.image_url);
+    setImageError(true);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -35,19 +40,23 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
 
       <CardContent className="space-y-4">
         <div className="grid md:grid-cols-2 gap-6">
-          <div>
-            <img
-              src={
-                imageError
-                  ? "/placeholder.svg" // 🔁 fallback-bild om originalet misslyckas
-                  : product.image_url
-              }
-              alt={product.name}
-              className="w-full h-64 object-contain rounded-lg border"
-              onError={() => setImageError(true)} // ✅ enkel fallback
-            />
+          {/* 🖼️ Produktbild */}
+          <div className="flex items-center justify-center bg-white border rounded-lg h-64">
+            {product.image_url && !imageError ? (
+              <img
+                src={product.image_url}
+                alt={product.name || "Produktbild"}
+                className="w-full h-full object-contain rounded-lg"
+                onError={handleImageError}
+              />
+            ) : (
+              <div className="text-center text-sm text-muted-foreground">
+                Ingen bild tillgänglig
+              </div>
+            )}
           </div>
 
+          {/* 📦 Produktinfo */}
           <div className="space-y-4">
             <div>
               <h3 className="text-xl font-semibold">{product.name}</h3>
@@ -104,6 +113,7 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
           </div>
         </div>
 
+        {/* ➕ Lägg till i offert */}
         <div className="border-t pt-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
@@ -131,3 +141,4 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
 };
 
 export default ProductDisplay;
+
