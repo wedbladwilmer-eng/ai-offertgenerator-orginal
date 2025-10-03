@@ -5,6 +5,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Helper function to build image URL with proper encoding
+function buildImageUrl(fileName: string, ext?: number): string {
+  const safeFileName = encodeURIComponent(fileName);
+  const suffix = '.jpg'; // Default to .jpg based on our data
+  const hosts = [
+    'https://media.nwgmedia.com/',
+    'https://images.nwgmedia.com/',
+  ];
+  return hosts[0] + safeFileName + suffix;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -14,7 +25,7 @@ serve(async (req) => {
   try {
     const { articleNumber } = await req.json()
     
-    console.log('Received request for article:', articleNumber)
+    console.log('📨 Received request for article:', articleNumber)
     
     const raw = String(articleNumber ?? '').trim()
     if (!raw) {
@@ -55,13 +66,14 @@ serve(async (req) => {
     let lastBody: string | undefined
 
     for (const url of candidateUrls) {
-      console.log('Fetching from New Wave API:', url)
+      console.log('🌐 Fetching from:', url)
       const r = await fetch(url, {
         headers: {
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'contextid': 'fa2225e0-7c06-47f3-9117-1dfb77535f27'
         }
       })
-      console.log('New Wave API response status:', r.status)
+      console.log('🔎 API response status:', r.status)
       if (r.ok) {
         response = r
         break
@@ -111,26 +123,47 @@ serve(async (req) => {
 
     // Transform the data to match our expected format
     const product = products[0]
-    console.log('Processing product:', product.productNumber || product.id)
+    console.log('✅ Processing product:', product.productNumber || product.id)
+    
+    // Build image URL with priority: image.fileName -> pictures (front) -> pictures[0]
+    let fileName = '';
+    let ext = 0;
+    
+    if (product.image?.fileName) {
+      fileName = product.image.fileName;
+      ext = product.image.ext || 0;
+    } else if (product.pictures && product.pictures.length > 0) {
+      // Try to find front productpicture first
+      const frontPic = product.pictures.find((p: any) => 
+        p.type === 'Productpicture' && p.angle === 'front'
+      );
+      if (frontPic?.fileName) {
+        fileName = frontPic.fileName;
+        ext = frontPic.ext || 0;
+      } else if (product.pictures[0]?.fileName) {
+        fileName = product.pictures[0].fileName;
+        ext = product.pictures[0].ext || 0;
+      }
+    }
+    
+    const image_url = fileName ? buildImageUrl(fileName, ext) : null;
+    console.info('🖼️ Final resolved image URL:', image_url);
+    
     const transformedProduct = {
       id: product.productNumber || product.id,
       name: product.productName || product.name,
       brand: product.productBrandName || product.brand,
       price_ex_vat: product.price?.retail?.num || product.price?.exVat?.num || null,
-      image_url: product.image?.fileName 
-        ? `https://media.nwgmedia.com/${product.image.fileName}.jpg`
-        : (product.pictures?.[0]?.fileName 
-          ? `https://media.nwgmedia.com/${product.pictures[0].fileName}.jpg`
-          : null),
+      image_url,
       category: product.filters?.category?.[0] || product.category || '',
       slug: product.slug || '',
       variations: product.variations?.map((v: any) => ({ color: v.color || v.name })) || [],
       description: product.productBrandName && product.productName 
-        ? `En högkvalitativ ${product.filters?.category?.[0] || 'produkt'} från ${product.productBrandName} perfekt för profilering. Tillverkad för komfort och stil.`
+        ? `En högkvalitativ ${product.filters?.category?.[0] || 'produkt'} från ${product.productBrandName}, perfekt för profilering.`
         : 'Högkvalitativ produkt perfekt för profilering.'
     }
 
-    console.log('Successfully transformed product data')
+    console.log('✅ Product transformed successfully')
     
     return new Response(
       JSON.stringify(transformedProduct), 

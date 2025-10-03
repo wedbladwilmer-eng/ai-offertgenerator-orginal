@@ -27,8 +27,8 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
     return `${price.toLocaleString("sv-SE")} kr`;
   };
 
-  // 👀 Debug-logg – ta bort när allt fungerar
-  console.log("🧪 Produktdata i frontend:", product);
+  // Debug logging
+  console.log("🧪 Produkt i UI:", product);
 
   return (
     <Card>
@@ -38,14 +38,14 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
 
       <CardContent className="space-y-4">
         <div className="grid md:grid-cols-2 gap-6">
-          {/* 🖼️ Produktbild */}
+          {/* Produktbild */}
           <div>
             {product.image_url ? (
               <img
                 src={imageError ? "/placeholder.svg" : product.image_url}
                 alt={product.name || "Produktbild"}
                 className="w-full h-64 object-contain rounded-lg border bg-white"
-                onError={(e) => {
+                onError={() => {
                   console.error("🚨 Bilden kunde inte laddas:", product.image_url);
                   setImageError(true);
                 }}
