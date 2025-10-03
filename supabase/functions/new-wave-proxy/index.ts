@@ -52,10 +52,10 @@ serve(async (req) => {
 
     const normalizedArticleNumber = raw
 
-    // Try multiple URL formats in case the API expects different parameter styles
+    // Try multiple URL formats - start with broader searches
     const candidateUrls = [
-      `https://commerce.gateway.nwg.se/assortment/sv/products?products=${normalizedArticleNumber}&assortmentIds=152611,153639`,
       `https://commerce.gateway.nwg.se/assortment/sv/products?products=${normalizedArticleNumber}`,
+      `https://commerce.gateway.nwg.se/assortment/sv/products?products=${normalizedArticleNumber}&assortmentIds=152611&assortmentIds=153639`,
       `https://commerce.gateway.nwg.se/assortment/sv/products?productNumbers=${normalizedArticleNumber}`,
       `https://commerce.gateway.nwg.se/assortment/sv/products/${normalizedArticleNumber}`
     ]
