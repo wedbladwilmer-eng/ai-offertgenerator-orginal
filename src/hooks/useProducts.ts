@@ -1,7 +1,3 @@
-import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-
 export type Product = {
   id: string;
   name: string;
@@ -14,6 +10,31 @@ export type Product = {
   slug?: string;
   variations?: Array<{ color: string }>;
 };
+
+// ✅ Funktion för att hämta produktdata från din Supabase Edge Function
+export async function fetchProduct(articleNumber: string): Promise<Product | null> {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/new-wave-proxy`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ articleNumber }),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to fetch product:", await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    console.log("✅ Product fetched:", data);
+    return data as Product;
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    return null;
+  }
+}
 
 export type QuoteItem = {
   product: Product;
@@ -31,12 +52,12 @@ export const useProducts = () => {
   // Function to fetch product data via Supabase Edge Function
   const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
     try {
-      const { data, error } = await supabase.functions.invoke('new-wave-proxy', {
-        body: { articleNumber }
+      const { data, error } = await supabase.functions.invoke("new-wave-proxy", {
+        body: { articleNumber },
       });
 
       if (error) {
-        throw new Error(error.message || 'Failed to fetch product data');
+        throw new Error(error.message || "Failed to fetch product data");
       }
 
       if (data.error) {
@@ -45,7 +66,7 @@ export const useProducts = () => {
 
       return data as Product;
     } catch (error) {
-      console.error('Error fetching from New Wave API:', error);
+      console.error("Error fetching from New Wave API:", error);
       throw error;
     }
   };
@@ -63,7 +84,7 @@ export const useProducts = () => {
     setIsLoading(true);
     try {
       const productData = await fetchProductData(articleNumber.trim());
-      
+
       if (!productData) {
         toast({
           title: "Produkt ej hittad",
@@ -80,7 +101,7 @@ export const useProducts = () => {
         description: `${productData.name} laddades framgångsrikt`,
       });
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
       toast({
         title: "Fel",
         description: "Det gick inte att hämta produkten från New Wave",
@@ -92,14 +113,12 @@ export const useProducts = () => {
   };
 
   const addToQuote = (product: Product, quantity: number) => {
-    const existingItem = quote.find(item => item.product.id === product.id);
-    
+    const existingItem = quote.find((item) => item.product.id === product.id);
+
     if (existingItem) {
-      setQuote(quote.map(item => 
-        item.product.id === product.id 
-          ? { ...item, quantity: item.quantity + quantity }
-          : item
-      ));
+      setQuote(
+        quote.map((item) => (item.product.id === product.id ? { ...item, quantity: item.quantity + quantity } : item)),
+      );
     } else {
       setQuote([...quote, { product, quantity }]);
     }
@@ -111,15 +130,11 @@ export const useProducts = () => {
   };
 
   const updateQuoteItem = (productId: string, updates: Partial<QuoteItem>) => {
-    setQuote(quote.map(item => 
-      item.product.id === productId 
-        ? { ...item, ...updates }
-        : item
-    ));
+    setQuote(quote.map((item) => (item.product.id === productId ? { ...item, ...updates } : item)));
   };
 
   const removeFromQuote = (productId: string) => {
-    setQuote(quote.filter(item => item.product.id !== productId));
+    setQuote(quote.filter((item) => item.product.id !== productId));
     toast({
       title: "Borttagen",
       description: "Produkten togs bort från offerten",
@@ -133,7 +148,7 @@ export const useProducts = () => {
   const getQuoteTotal = () => {
     return quote.reduce((total, item) => {
       const price = item.product.price_ex_vat || 0;
-      return total + (price * item.quantity);
+      return total + price * item.quantity;
     }, 0);
   };
 
