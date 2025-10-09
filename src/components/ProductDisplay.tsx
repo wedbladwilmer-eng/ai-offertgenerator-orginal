@@ -13,7 +13,7 @@ interface ProductDisplayProps {
 
 const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
   const [quantity, setQuantity] = useState(1);
-  const [imgError, setImgError] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const handleAddToQuote = () => {
     if (quantity > 0) {
@@ -27,7 +27,7 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
     return `${price.toLocaleString("sv-SE")} kr`;
   };
 
-  console.log("ProductDisplay image_url:", product?.image_url);
+  console.log("🖼️ Rendering product image_url:", product.image_url);
 
   return (
     <Card>
@@ -37,16 +37,21 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
 
       <CardContent className="space-y-4">
         <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg border flex items-center justify-center h-64">
-            <img
-              src={imgError ? "/placeholder.svg" : product?.image_url || "/placeholder.svg"}
-              alt={product?.name || "Produktbild"}
-              className="max-h-60 object-contain"
-              onError={() => setImgError(true)}
-              referrerPolicy="no-referrer"
-            />
+          {/* 📸 Bild */}
+          <div className="flex justify-center items-center bg-gray-50 rounded-lg border h-64">
+            {product.image_url && !imageError ? (
+              <img
+                src={product.image_url}
+                alt={product.name}
+                className="max-h-60 object-contain"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">Ingen bild tillgänglig</p>
+            )}
           </div>
 
+          {/* 📦 Produktinfo */}
           <div className="space-y-4">
             <div>
               <h3 className="text-xl font-semibold">{product.name}</h3>
@@ -77,9 +82,9 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
               <div>
                 <Label>Tillgängliga färger</Label>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {product.variations.map((v, i) => (
-                    <span key={i} className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded">
-                      {v.color}
+                  {product.variations.map((variation, index) => (
+                    <span key={index} className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded">
+                      {variation.color}
                     </span>
                   ))}
                 </div>
@@ -88,6 +93,7 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
           </div>
         </div>
 
+        {/* 🧾 Offertknapp */}
         <div className="border-t pt-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
