@@ -13,7 +13,7 @@ interface ProductDisplayProps {
 
 const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
   const [quantity, setQuantity] = useState(1);
-  const [imageError, setImageError] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const handleAddToQuote = () => {
     if (quantity > 0) {
@@ -27,8 +27,7 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
     return `${price.toLocaleString("sv-SE")} kr`;
   };
 
-  // Debug logging
-  console.log("🧪 Produkt i UI:", product);
+  console.log("ProductDisplay image_url:", product?.image_url);
 
   return (
     <Card>
@@ -38,59 +37,39 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
 
       <CardContent className="space-y-4">
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Produktbild */}
-          <div>
-            {product.image_url ? (
-              <img
-                src={imageError ? "/placeholder.svg" : product.image_url}
-                alt={product.name || "Produktbild"}
-                className="w-full h-64 object-contain rounded-lg border bg-white"
-                onError={() => {
-                  console.error("🚨 Bilden kunde inte laddas:", product.image_url);
-                  setImageError(true);
-                }}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Ingen bild tillgänglig
-              </p>
-            )}
+          <div className="bg-white rounded-lg border flex items-center justify-center h-64">
+            <img
+              src={imgError ? "/placeholder.svg" : product?.image_url || "/placeholder.svg"}
+              alt={product?.name || "Produktbild"}
+              className="max-h-60 object-contain"
+              onError={() => setImgError(true)}
+              referrerPolicy="no-referrer"
+            />
           </div>
 
-          {/* 📦 Produktinfo */}
           <div className="space-y-4">
             <div>
               <h3 className="text-xl font-semibold">{product.name}</h3>
               <p className="text-muted-foreground">Artikelnummer: {product.id}</p>
-              {product.brand && (
-                <p className="text-sm text-muted-foreground">
-                  Märke: {product.brand}
-                </p>
-              )}
+              {product.brand && <p className="text-sm text-muted-foreground">Märke: {product.brand}</p>}
             </div>
 
             {product.description && (
               <div>
                 <Label>Beskrivning</Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {product.description}
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">{product.description}</p>
               </div>
             )}
 
             <div>
-              <Label>Pris (exkl. moms)</Label>
-              <p className="text-lg font-semibold">
-                {formatPrice(product.price_ex_vat)}
-              </p>
+              <Label>Pris (inkl. moms)</Label>
+              <p className="text-lg font-semibold">{formatPrice(product.price_ex_vat)}</p>
             </div>
 
             {product.category && (
               <div>
                 <Label>Kategori</Label>
-                <p className="text-sm text-muted-foreground">
-                  {product.category}
-                </p>
+                <p className="text-sm text-muted-foreground">{product.category}</p>
               </div>
             )}
 
@@ -98,12 +77,9 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
               <div>
                 <Label>Tillgängliga färger</Label>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {product.variations.map((variation, index) => (
-                    <span
-                      key={index}
-                      className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded"
-                    >
-                      {variation.color}
+                  {product.variations.map((v, i) => (
+                    <span key={i} className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded">
+                      {v.color}
                     </span>
                   ))}
                 </div>
@@ -112,7 +88,6 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
           </div>
         </div>
 
-        {/* ➕ Lägg till i offert */}
         <div className="border-t pt-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
@@ -122,9 +97,7 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
                 type="number"
                 min="1"
                 value={quantity}
-                onChange={(e) =>
-                  setQuantity(Math.max(1, parseInt(e.target.value) || 1))
-                }
+                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                 className="w-20"
               />
             </div>
