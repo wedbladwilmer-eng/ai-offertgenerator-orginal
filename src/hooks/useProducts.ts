@@ -1,3 +1,7 @@
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
 export type Product = {
   id: string;
   name: string;
