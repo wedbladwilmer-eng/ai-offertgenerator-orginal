@@ -56,7 +56,7 @@ export const useProducts = () => {
   // Function to fetch product data via Supabase Edge Function
   const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
     try {
-      const { data, error } = await supabase.functions.invoke("new-wave-proxy", {
+      const { data, error } = await supabase.functions.invoke("new_wave_proxy_2025_10_13_00_04", {
         body: { articleNumber },
       });
 
