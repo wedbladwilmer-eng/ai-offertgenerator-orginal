@@ -14,6 +14,7 @@ interface ProductDisplayProps {
 const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
   const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
 
   const handleAddToQuote = () => {
     if (quantity > 0) {
@@ -27,6 +28,22 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
     return `${price.toLocaleString("sv-SE")} kr`;
   };
 
+  // Handle image loading
+  const handleImageLoad = () => {
+    console.log("✅ Image loaded successfully:", product.image_url);
+    setImageLoading(false);
+  };
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    console.warn("❌ Image failed to load:", product.image_url);
+    setImageError(true);
+    setImageLoading(false);
+
+    // Try to set a placeholder image
+    const target = e.target as HTMLImageElement;
+    target.src = "/placeholder.svg";
+  };
+
   console.log("🖼️ Rendering product image_url:", product.image_url);
 
   return (
@@ -38,16 +55,30 @@ const ProductDisplay = ({ product, onAddToQuote }: ProductDisplayProps) => {
       <CardContent className="space-y-4">
         <div className="grid md:grid-cols-2 gap-6">
           {/* 📸 Bild */}
-          <div className="flex justify-center items-center bg-gray-50 rounded-lg border h-64">
+          <div className="flex justify-center items-center bg-gray-50 rounded-lg border h-64 relative">
             {product.image_url && !imageError ? (
-              <img
-                src={product.image_url}
-                alt={product.name}
-                className="max-h-60 object-contain"
-                onError={() => setImageError(true)}
-              />
+              <>
+                {imageLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                  </div>
+                )}
+                <img
+                  src={product.image_url}
+                  alt={product.name}
+                  className="max-h-60 object-contain"
+                  onLoad={handleImageLoad}
+                  onError={handleImageError}
+                  style={{ display: imageLoading ? "none" : "block" }}
+                />
+              </>
             ) : (
-              <p className="text-sm text-muted-foreground">Ingen bild tillgänglig</p>
+              <div className="text-center p-4">
+                <p className="text-sm text-muted-foreground">Ingen bild tillgänglig</p>
+                {imageError && (
+                  <p className="text-xs text-red-500 mt-1">Kunde inte ladda bild från: {product.image_url}</p>
+                )}
+              </div>
             )}
           </div>
 
