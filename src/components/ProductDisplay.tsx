@@ -19,6 +19,7 @@ interface ProductDisplayProps {
 }
 
 export default function ProductDisplay({ product, onAddToQuote }: ProductDisplayProps) {
+  console.log("🔍 Product received in ProductDisplay:", product);
   if (!product) return <p>Ingen produkt vald</p>;
 
   // 🧠 State för att hålla koll på vald färgvariant
