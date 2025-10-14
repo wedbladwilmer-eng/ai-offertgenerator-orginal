@@ -1,7 +1,7 @@
 project_id = "gcyyhoikoofgsgqrxzet"
 
-[functions.new_wave_proxy_2025_10_13_00_04]
+[functions.new-wave-proxy]
 verify_jwt = false
 
-[functions.image_proxy_2025_10_13_00_04]
+[functions.image-proxy]
 verify_jwt = false
