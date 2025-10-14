@@ -1,3 +1,5 @@
+console.log("🔍 Product received in ProductDisplay:", product);
+
 import React, { useState } from "react";
 
 interface Variation {
