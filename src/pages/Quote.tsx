@@ -232,7 +232,7 @@ const Quote = () => {
                 <div className="space-y-4">
                   <h4 className="font-semibold">Välj bildvinklar</h4>
                   {Object.keys(validViews).length > 0 ? (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-4 gap-4">
                       {Object.entries(validViews).map(([key, url]) => (
                         <div
                           key={key}
