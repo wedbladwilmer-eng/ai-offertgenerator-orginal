@@ -6,6 +6,12 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 
+
+interface ProductVariation {
+  color: string;
+  image_url: string;
+}
+
 interface ProductData {
   id: string;
   name: string;
@@ -13,6 +19,7 @@ interface ProductData {
   price_ex_vat?: number;
   category?: string;
   description?: string;
+  variations?: ProductVariation[];
 }
 
 interface MockupPreviewProps {
@@ -26,6 +33,7 @@ const MockupPreview: React.FC<MockupPreviewProps> = ({ previewUrl, mockupUrl }) 
   const [product, setProduct] = useState<ProductData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const requestIdRef = useRef(0);
   const debounceTimerRef = useRef<number | null>(null);
@@ -65,7 +73,9 @@ const MockupPreview: React.FC<MockupPreviewProps> = ({ previewUrl, mockupUrl }) 
         price_ex_vat: data.price_ex_vat || 0,
         category: data.category || '',
         description: data.description || `${data.brand} – ${data.name}`,
+        variations: data.variations || [],
       });
+      setCurrentIndex(0);
     } catch (err: any) {
       console.error(err);
       if (localId !== requestIdRef.current) return;
@@ -130,16 +140,60 @@ const MockupPreview: React.FC<MockupPreviewProps> = ({ previewUrl, mockupUrl }) 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h4 className="font-medium mb-2">Originalprodukt</h4>
-                <img
-                  src={product.image_url || '/placeholder.svg'}
-                  alt={product.name}
-                  className="max-w-full h-auto rounded border bg-white"
-                />
-                <div className="mt-3">
-                  <p className="text-lg font-semibold">{product.name}</p>
-                  <p className="text-sm text-muted-foreground">{product.description}</p>
-                  <p className="mt-2 text-md font-bold">{product.price_ex_vat} kr</p>
-                </div>
+                {(() => {
+                  const variations = product.variations || [];
+                  const hasMultiple = variations.length > 1;
+                  const currentImage = variations.length > 0 ? variations[currentIndex]?.image_url : product.image_url;
+                  const currentColor = variations.length > 0 ? variations[currentIndex]?.color : "Standard";
+
+                  const handleNext = () => {
+                    if (!hasMultiple) return;
+                    setCurrentIndex((prev) => (prev + 1) % variations.length);
+                  };
+
+                  const handlePrev = () => {
+                    if (!hasMultiple) return;
+                    setCurrentIndex((prev) => (prev === 0 ? variations.length - 1 : prev - 1));
+                  };
+
+                  return (
+                    <>
+                      <img
+                        src={currentImage || '/placeholder.svg'}
+                        alt={product.name}
+                        className="max-w-full h-auto rounded border bg-white"
+                      />
+                      {hasMultiple && (
+                        <div className="flex justify-center gap-6 mt-4">
+                          <button
+                            onClick={handlePrev}
+                            aria-label="Föregående färg"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-3 shadow-lg transition-all hover:scale-110"
+                          >
+                            ◀
+                          </button>
+                          <button
+                            onClick={handleNext}
+                            aria-label="Nästa färg"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-3 shadow-lg transition-all hover:scale-110"
+                          >
+                            ▶
+                          </button>
+                        </div>
+                      )}
+                      <div className="mt-3">
+                        <p className="text-lg font-semibold">{product.name}</p>
+                        {hasMultiple && (
+                          <p className="text-sm text-muted-foreground">
+                            Färg: <span className="font-medium">{currentColor}</span>
+                          </p>
+                        )}
+                        <p className="text-sm text-muted-foreground">{product.description}</p>
+                        <p className="mt-2 text-md font-bold">{product.price_ex_vat} kr</p>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
               {previewUrl || mockupUrl ? (
                 <div>
