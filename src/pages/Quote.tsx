@@ -25,7 +25,6 @@ const Quote = () => {
   const [margin, setMargin] = useState("2");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
   const [selectedViews, setSelectedViews] = useState<string[]>(["front", "right", "back", "left"]);
 
   const productId = searchParams.get("productId");
@@ -66,8 +65,7 @@ const Quote = () => {
         return;
       }
       setProduct(productData);
-    } catch (error) {
-      console.error("Error:", error);
+    } catch {
       toast({
         title: "Fel",
         description: "Kunde inte hämta produktinformation från New Wave",
@@ -78,10 +76,8 @@ const Quote = () => {
     }
   };
 
-  // 🔹 Hantera val av vinklar
-  const toggleView = (view: string) => {
+  const toggleView = (view: string) =>
     setSelectedViews((prev) => (prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]));
-  };
 
   if (isLoading || !product) {
     return (
@@ -93,13 +89,18 @@ const Quote = () => {
     );
   }
 
-  // 🔹 Dynamiskt skapa bildvinklar (fallback-metod)
-  const imageBase = product.image_url?.replace(/_Front\.jpg$/i, "") || product.image_url?.replace(/\.jpg$/i, "") || "";
+  // 🧩 Dynamiska bildparametrar
+  const folderId = product.folder_id || "108461";
+  const articleNumber = product.id || "032103";
+  const colorCode = product.variations?.[0]?.colorCode || product.colorCode || "99";
+  const slugName = (product.name || "").replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
+
+  // 🔸 Skapa dynamiska bildlänkar (korrekt NWG-format)
   const productViews = {
-    front: `${imageBase}_Front.jpg`,
-    right: `${imageBase}_Right.jpg`,
-    back: `${imageBase}_Back.jpg`,
-    left: `${imageBase}_Left.jpg`,
+    front: `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slugName}_Front.jpg`,
+    right: `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slugName}_Right.jpg`,
+    back: `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slugName}_Back.jpg`,
+    left: `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slugName}_Left.jpg`,
   };
 
   const marginMultiplier = parseFloat(margin);
@@ -107,7 +108,6 @@ const Quote = () => {
   const priceWithMargin = basePrice * marginMultiplier;
   const totalPrice = priceWithMargin * quantity;
 
-  // 🔹 Skapa PDF
   const handleGeneratePDF = async () => {
     if (!customerName.trim()) {
       toast({
@@ -117,29 +117,18 @@ const Quote = () => {
       });
       return;
     }
-
     setIsGenerating(true);
-
     try {
       const quoteData = {
-        quote: [
-          {
-            product: product,
-            quantity: quantity,
-            mockup_url: mockupUrl,
-            selectedViews,
-          },
-        ],
+        quote: [{ product, quantity, mockup_url: mockupUrl, selectedViews }],
         companyName: customerName,
-        customerName: customerName,
+        customerName,
         total: totalPrice / 1.25,
         totalWithVat: totalPrice,
       };
-
       await generatePDF(quoteData);
       toast({ title: "Offert skapad!", description: "PDF:en har sparats och laddats ner." });
-    } catch (error) {
-      console.error("Error generating PDF:", error);
+    } catch {
       toast({
         title: "Fel vid skapande av offert",
         description: "Något gick fel. Försök igen.",
@@ -154,18 +143,16 @@ const Quote = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-white border-b shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={() => navigate("/")} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Tillbaka
-            </Button>
-            <div className="flex items-center gap-4">
-              <img src={kostaNadaProfilLogo} alt="Kosta Nada Profil AB" className="h-16 w-auto object-contain" />
-              <div>
-                <h1 className="text-xl font-bold text-foreground">Kosta Nada Profil AB</h1>
-                <p className="text-sm text-muted-foreground">Professionella produkter med logotyp</p>
-              </div>
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Button variant="ghost" onClick={() => navigate("/")} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Tillbaka
+          </Button>
+          <div className="flex items-center gap-4">
+            <img src={kostaNadaProfilLogo} alt="Kosta Nada Profil AB" className="h-16 w-auto object-contain" />
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Kosta Nada Profil AB</h1>
+              <p className="text-sm text-muted-foreground">Professionella produkter med logotyp</p>
             </div>
           </div>
         </div>
@@ -183,45 +170,43 @@ const Quote = () => {
           </CardHeader>
 
           <CardContent className="p-8 space-y-8">
-            {/* Kunduppgifter */}
-            <div className="bg-muted/30 p-6 rounded-lg">
-              <div className="grid lg:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="customer-name" className="font-semibold">
-                    Kundnamn *
-                  </Label>
-                  <Input
-                    id="customer-name"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Ange företag eller kundnamn"
-                    className="mt-2"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="margin-select" className="font-semibold text-orange-600">
-                    Marginal *
-                  </Label>
-                  <Select value={margin} onValueChange={setMargin}>
-                    <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Välj marginal" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((m) => (
-                        <SelectItem key={m} value={String(m)}>
-                          1:{m}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">Syns inte i PDF:en</p>
-                </div>
+            {/* Kundinfo */}
+            <div className="bg-muted/30 p-6 rounded-lg grid lg:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="customer-name" className="text-base font-semibold">
+                  Kundnamn *
+                </Label>
+                <Input
+                  id="customer-name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Ange företag eller kundnamn"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="margin-select" className="text-base font-semibold text-orange-600">
+                  Marginal (endast beräkning) *
+                </Label>
+                <Select value={margin} onValueChange={setMargin}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Välj marginal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((v) => (
+                      <SelectItem key={v} value={v.toString()}>
+                        1:{v}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Detta fält syns inte i PDF:en</p>
               </div>
             </div>
 
             <Separator />
 
-            {/* Produktinformation */}
+            {/* Produktinfo */}
             <div>
               <h2 className="text-xl font-semibold mb-6">Produktinformation</h2>
               <div className="grid lg:grid-cols-2 gap-8">
@@ -260,7 +245,7 @@ const Quote = () => {
                   </div>
                 </div>
 
-                {/* Produktdetaljer */}
+                {/* Detaljer */}
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -279,7 +264,7 @@ const Quote = () => {
                     )}
                     <div>
                       <Label className="font-semibold">Grundpris (inkl. moms)</Label>
-                      <p className="mt-1">{basePrice.toLocaleString("sv-SE")} kr</p>
+                      <p className="mt-1">{basePrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr</p>
                     </div>
                   </div>
 
@@ -299,31 +284,44 @@ const Quote = () => {
 
             <Separator />
 
-            {/* Pris */}
+            {/* Priser */}
             <div>
               <h3 className="text-lg font-semibold mb-4">Prissättning</h3>
               <div className="overflow-hidden rounded-lg border">
                 <div className="bg-primary text-primary-foreground p-4 grid grid-cols-4 gap-4 font-semibold">
                   <span>Artikelnummer</span>
-                  <span>Pris/st</span>
+                  <span>Pris/st (inkl. moms)</span>
                   <span>Antal</span>
                   <span>Totalpris</span>
                 </div>
                 <div className="bg-muted/30 p-4 grid grid-cols-4 gap-4">
                   <span>{product.id}</span>
-                  <span>{priceWithMargin.toLocaleString("sv-SE")} kr</span>
+                  <span>{priceWithMargin.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr</span>
                   <span>{quantity}</span>
-                  <span className="font-semibold">{totalPrice.toLocaleString("sv-SE")} kr</span>
+                  <span className="font-semibold">
+                    {totalPrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Totalt */}
-            <div className="bg-muted/30 p-6 rounded-lg">
-              <div className="flex justify-between text-lg font-bold text-primary max-w-sm ml-auto">
-                <span>TOTALT:</span>
-                <span>{totalPrice.toLocaleString("sv-SE")} kr</span>
+            {/* Summering */}
+            <div className="bg-muted/30 p-6 rounded-lg max-w-sm ml-auto">
+              <div className="flex justify-between text-lg font-bold text-primary">
+                <span>TOTALT (inkl. moms):</span>
+                <span>{totalPrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr</span>
               </div>
+            </div>
+
+            {/* Villkor */}
+            <div className="bg-muted/20 p-4 rounded-lg text-sm text-muted-foreground">
+              <h4 className="font-semibold text-foreground mb-2">Villkor och bestämmelser:</h4>
+              <ul className="space-y-1 list-disc list-inside">
+                <li>Offerten gäller i 30 dagar från utställningsdatum</li>
+                <li>Leveranstid: 2–3 veckor från godkänd beställning</li>
+                <li>Betalningsvillkor: 30 dagar netto</li>
+                <li>Alla priser anges inklusive moms där inget annat anges</li>
+              </ul>
             </div>
 
             {/* PDF-knapp */}
