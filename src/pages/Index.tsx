@@ -1,9 +1,8 @@
-import { useState } from 'react';
-import ProductDisplay from '@/components/ProductDisplay';
-import { QuoteList } from '@/components/QuoteList';
-import ProductMockup from '@/components/ui/ProductMockup';
-import MockupPreview from '@/components/MockupPreview';
-import { useProducts } from '@/hooks/useProducts';
+import { useState } from "react";
+import ProductDisplay from "@/components/ProductDisplay";
+import { QuoteList } from "@/components/QuoteList";
+import MockupPreview from "@/components/MockupPreview";
+import { useProducts } from "@/hooks/useProducts";
 
 const Index = () => {
   const [mockupPreviewUrl, setMockupPreviewUrl] = useState<string | null>(null);
@@ -31,39 +30,22 @@ const Index = () => {
       <div className="container mx-auto py-8 space-y-8">
         {/* ✅ Header */}
         <header className="text-center">
-          <h1 className="text-4xl font-bold text-foreground mb-2">
-            Offertgenerator
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Skapa professionella offerter
-          </p>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Offertgenerator</h1>
+          <p className="text-xl text-muted-foreground">Skapa professionella offerter</p>
         </header>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* ✅ Vänstra kolumnen: Mockup */}
-          <div className="space-y-6">
-            {product && (
-              <>
-                <ProductDisplay 
-                  product={product}
-                  onAddToQuote={addToQuote}
-                />
-
-                <ProductMockup 
-                  product={{
-                    id: product.id,
-                    name: product.name,
-                    image_url: product.image_url,
-                    price_ex_vat: product.price_ex_vat,
-                    category: product.category
-                  }}
-                  onPreviewUpdate={handlePreviewUpdate}
-                />
-              </>
+        {/* ✅ Tvåkolumns-layout */}
+        <div className="grid lg:grid-cols-2 gap-8 overflow-visible">
+          {/* ✅ Vänster kolumn: Produktvisning */}
+          <div className="space-y-6 overflow-visible relative">
+            {product ? (
+              <ProductDisplay product={product} onAddToQuote={addToQuote} />
+            ) : (
+              <p className="text-center text-gray-500">Ange ett artikelnummer för att visa produkt.</p>
             )}
           </div>
 
-          {/* ✅ Högra kolumnen: Offertlista + Mockup Preview */}
+          {/* ✅ Höger kolumn: Offertlista och Preview */}
           <div className="space-y-6">
             <QuoteList
               quote={quote}
@@ -74,10 +56,7 @@ const Index = () => {
               totalWithVat={getQuoteTotalWithVat()}
             />
 
-            <MockupPreview
-              previewUrl={mockupPreviewUrl}
-              mockupUrl={mockupUrl}
-            />
+            <MockupPreview previewUrl={mockupPreviewUrl} mockupUrl={mockupUrl} />
           </div>
         </div>
       </div>
@@ -86,4 +65,3 @@ const Index = () => {
 };
 
 export default Index;
-
