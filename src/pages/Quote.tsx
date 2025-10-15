@@ -147,10 +147,10 @@ const Quote = () => {
 
   // 🔹 Exempelvinklar (kan göras dynamiska senare)
   const productViews = {
-    front: "https://images.nwgmedia.com/preview/377113/0201050-91_Miami_PRO_Roundneck_Front.jpg",
-    right: "https://images.nwgmedia.com/preview/386550/0201050-91_MiamiPRORoundneck_grey_Right.jpg",
-    back: "https://images.nwgmedia.com/preview/386560/0201050-91_MiamiPRORoundneck_grey_Back.jpg",
-    left: "https://images.nwgmedia.com/preview/386562/0201050-91_MiamiPRORoundneck_grey_Left.jpg",
+    front: `https://images.nwgmedia.com/preview/${baseId}/${baseId}-${colorCode}_${cleanName}_Front.jpg`,
+    right: `https://images.nwgmedia.com/preview/${baseId}/${baseId}-${colorCode}_${cleanName}_Right.jpg`,
+    back: `https://images.nwgmedia.com/preview/${baseId}/${baseId}-${colorCode}_${cleanName}_Back.jpg`,
+    left: `https://images.nwgmedia.com/preview/${baseId}/${baseId}-${colorCode}_${cleanName}_Left.jpg`,
   };
 
   return (
