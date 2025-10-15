@@ -243,38 +243,58 @@ const Quote = () => {
               <div>
                 <h2 className="text-xl font-semibold mb-6">Produktinformation</h2>
                 <div className="grid lg:grid-cols-2 gap-8">
-                  {/* Product Image */}
+                  {/* Product Images - All variations in a grid */}
                   <div className="space-y-4">
-                    {mockupUrl ? (
-                      <div className="bg-white p-4 rounded-lg border flex flex-col items-center justify-center">
+                    {(() => {
+                      const productId = product.id;
+                      const views = {
+                        front: `https://images.nwgmedia.com/preview/377113/${productId}_Miami_PRO_Roundneck_Front.jpg`,
+                        right: `https://images.nwgmedia.com/preview/386550/${productId}_MiamiPRORoundneck_grey_Right.jpg`,
+                        back: `https://images.nwgmedia.com/preview/386560/${productId}_MiamiPRORoundneck_grey_Back.jpg`,
+                        left: `https://images.nwgmedia.com/preview/386562/${productId}_MiamiPRORoundneck_grey_Left.jpg`
+                      };
+
+                      const viewLabels = {
+                        front: "Framsida",
+                        right: "Höger",
+                        back: "Baksida",
+                        left: "Vänster"
+                      };
+
+                      return (
+                        <div className="grid grid-cols-2 gap-3">
+                          {Object.entries(views).map(([key, url]) => (
+                            <div key={key} className="bg-white p-3 rounded-lg border">
+                              <img
+                                src={url}
+                                alt={viewLabels[key as keyof typeof viewLabels]}
+                                className="w-full h-auto object-contain rounded-sm"
+                                onError={(e) => {
+                                  e.currentTarget.src = mockupUrl || product.image_url || '/placeholder.svg';
+                                }}
+                              />
+                              <p className="text-xs text-center mt-2 text-muted-foreground">
+                                {viewLabels[key as keyof typeof viewLabels]}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                    {mockupUrl && (
+                      <div className="bg-white p-4 rounded-lg border">
                         <img
                           src={mockupUrl}
-                          alt="Produktmockup med logotyp"
-                          className="max-h-[400px] w-auto object-contain mx-auto rounded-sm border border-border"
+                          alt="Produkt med din logotyp"
+                          className="w-full h-auto object-contain rounded-sm"
                           onError={(e) => {
                             console.error('Failed to load mockup image');
                             e.currentTarget.src = '/placeholder.svg';
                           }}
                         />
-                        <p className="text-sm text-muted-foreground mt-2 text-center w-full">
-                          Produkt med din logotyp
+                        <p className="text-sm text-muted-foreground mt-2 text-center">
+                          Med din logotyp
                         </p>
-                      </div>
-                    ) : product.image_url ? (
-                      <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="max-h-[400px] w-auto object-contain mx-auto rounded-sm border border-border"
-                          onError={(e) => {
-                            console.error('Failed to load product image from:', product.image_url);
-                            e.currentTarget.src = '/placeholder.svg';
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="bg-muted/30 p-8 rounded-lg text-center">
-                        <p className="text-muted-foreground">Ingen produktbild tillgänglig</p>
                       </div>
                     )}
                   </div>
