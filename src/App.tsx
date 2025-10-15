@@ -27,3 +27,6 @@ const App = () => (
 );
 
 export default App;
+import DebugTest from "@/pages/DebugTest";
+
+<Route path="/debug" element={<DebugTest />} />;
