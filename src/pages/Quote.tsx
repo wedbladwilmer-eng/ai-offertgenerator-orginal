@@ -246,12 +246,17 @@ const Quote = () => {
                   {/* Product Images - All variations in a grid */}
                   <div className="space-y-4">
                     {(() => {
-                      const productId = product.id;
+                      // Get the selected color variation image URL
+                      const baseImageUrl = product.image_url || '';
+                      
+                      // Extract the base URL without the suffix (before _Front, _Right, etc.)
+                      const baseUrl = baseImageUrl.replace(/_[A-Za-z]+\.(jpg|png|jpeg)$/i, '');
+                      
                       const views = {
-                        front: `https://images.nwgmedia.com/preview/377113/${productId}_Miami_PRO_Roundneck_Front.jpg`,
-                        right: `https://images.nwgmedia.com/preview/386550/${productId}_MiamiPRORoundneck_grey_Right.jpg`,
-                        back: `https://images.nwgmedia.com/preview/386560/${productId}_MiamiPRORoundneck_grey_Back.jpg`,
-                        left: `https://images.nwgmedia.com/preview/386562/${productId}_MiamiPRORoundneck_grey_Left.jpg`
+                        front: `${baseUrl}_Front.jpg`,
+                        right: `${baseUrl}_Right.jpg`,
+                        back: `${baseUrl}_Back.jpg`,
+                        left: `${baseUrl}_Left.jpg`
                       };
 
                       const viewLabels = {
@@ -380,11 +385,17 @@ const Quote = () => {
                 <h3 className="text-lg font-semibold mb-4">🖼️ Välj vinklar till offerten</h3>
                 <div className="grid grid-cols-2 gap-4">
                   {(() => {
+                    // Get the selected color variation image URL
+                    const baseImageUrl = product.image_url || '';
+                    
+                    // Extract the base URL without the suffix (before _Front, _Right, etc.)
+                    const baseUrl = baseImageUrl.replace(/_[A-Za-z]+\.(jpg|png|jpeg)$/i, '');
+                    
                     const views = {
-                      front: `https://images.nwgmedia.com/preview/377113/${product.id}_Miami_PRO_Roundneck_Front.jpg`,
-                      right: `https://images.nwgmedia.com/preview/386550/${product.id}_MiamiPRORoundneck_grey_Right.jpg`,
-                      back: `https://images.nwgmedia.com/preview/386560/${product.id}_MiamiPRORoundneck_grey_Back.jpg`,
-                      left: `https://images.nwgmedia.com/preview/386562/${product.id}_MiamiPRORoundneck_grey_Left.jpg`
+                      front: `${baseUrl}_Front.jpg`,
+                      right: `${baseUrl}_Right.jpg`,
+                      back: `${baseUrl}_Back.jpg`,
+                      left: `${baseUrl}_Left.jpg`
                     };
 
                     const toggleView = (view: string) => {
