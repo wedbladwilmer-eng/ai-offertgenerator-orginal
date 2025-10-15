@@ -13,11 +13,9 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
   const variations = product.variations || [];
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const currentImage = variations.length > 0 ? variations[currentIndex]?.image_url : product.image_url;
-
-  const currentColor = variations.length > 0 ? variations[currentIndex]?.color : "Standard";
-
   const hasMultiple = variations.length > 1;
+  const currentImage = variations.length > 0 ? variations[currentIndex]?.image_url : product.image_url;
+  const currentColor = variations.length > 0 ? variations[currentIndex]?.color : "Standard";
 
   const handleNext = () => {
     if (!hasMultiple) return;
@@ -29,7 +27,7 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
     setCurrentIndex((prev) => (prev === 0 ? variations.length - 1 : prev - 1));
   };
 
-  // Touch/swipe
+  // Swipe
   let touchStartX = 0;
   let touchEndX = 0;
 
@@ -49,81 +47,61 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
   };
 
   return (
-   return (
-  <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg text-center">
-    <h2 className="text-2xl font-semibold mb-4">{product.name}</h2>
+    <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg text-center">
+      <h2 className="text-2xl font-semibold mb-4">{product.name}</h2>
 
-    <div
-      className="relative flex justify-center items-center w-full select-none"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      {currentImage ? (
-        <img
-          src={currentImage}
-          alt={product.name}
-          className="w-full h-auto max-h-[420px] object-contain rounded-lg shadow"
-        />
-      ) : (
-        <p className="text-gray-500 italic">Ingen bild tillgänglig</p>
-      )}
-
-      {/* Pilar – visas ovanpå bilden */}
-      {hasMultiple && (
-        <>
-          <button
-            onClick={handlePrev}
-            aria-label="Föregående färg"
-            className="absolute left-5 top-1/2 -translate-y-1/2 bg-black/70 text-white hover:bg-black/90 hover:scale-110 rounded-full p-3 shadow-xl border-2 border-white/30 backdrop-blur-sm transition-all z-30"
-          >
-            ◀
-          </button>
-          <button
-            onClick={handleNext}
-            aria-label="Nästa färg"
-            className="absolute right-5 top-1/2 -translate-y-1/2 bg-black/70 text-white hover:bg-black/90 hover:scale-110 rounded-full p-3 shadow-xl border-2 border-white/30 backdrop-blur-sm transition-all z-30"
-          >
-            ▶
-          </button>
-        </>
-      )}
-    </div>
-
-    {/* Färgnamn och info */}
-    <div className="mt-4">
-      <p className="text-sm text-gray-700">
-        Färg: <span className="font-medium">{currentColor}</span>
-      </p>
-      {product.price_ex_vat && (
-        <p className="mt-2 font-semibold">{product.price_ex_vat} kr (exkl. moms)</p>
-      )}
-      {hasMultiple && (
-        <p className="mt-3 text-xs text-gray-500 italic">
-          Swipe eller klicka på pilarna för att byta färg
-        </p>
-      )}
-    </div>
-  </div>
-);
- : (
+      {/* Bildsektionen */}
+      <div
+        className="relative w-full select-none"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {currentImage ? (
+          <img
+            src={currentImage}
+            alt={product.name}
+            className="w-full h-auto max-h-[420px] object-contain rounded-lg shadow"
+          />
+        ) : (
           <p className="text-gray-500 italic">Ingen bild tillgänglig</p>
+        )}
+
+        {/* Navigeringspilar ovanpå bilden */}
+        {hasMultiple && (
+          <>
+            <button
+              onClick={handlePrev}
+              aria-label="Föregående färg"
+              className="absolute left-5 top-1/2 -translate-y-1/2 bg-black/70 text-white hover:bg-black/90 rounded-full p-3 shadow-xl border border-white/30 backdrop-blur-sm z-30 transition-all hover:scale-110"
+            >
+              ◀
+            </button>
+            <button
+              onClick={handleNext}
+              aria-label="Nästa färg"
+              className="absolute right-5 top-1/2 -translate-y-1/2 bg-black/70 text-white hover:bg-black/90 rounded-full p-3 shadow-xl border border-white/30 backdrop-blur-sm z-30 transition-all hover:scale-110"
+            >
+              ▶
+            </button>
+          </>
         )}
       </div>
 
-      {/* Navigeringspilar UNDER bilden */}
-      {        </p>
-          <button
-            onClick={handleNext}
-            className="bg-black/70 text-white px-4 py-2 rounded-full hover:bg-black/90 transition"
-          >
-            ▶
-          </button>
-        </div>
-      )}
+      {/* Info under bilden */}
+      <div className="mt-4">
+        <p className="text-sm text-gray-700">
+          Färg: <span className="font-medium">{currentColor}</span>
+        </p>
 
-      {product.price_ex_vat && <p className="mt-4 font-semibold">{product.price_ex_vat} kr (exkl. moms)</p>}
+        {hasMultiple && (
+          <p className="text-xs text-gray-500 italic mt-1">Swipe eller klicka på pilarna för att byta färg</p>
+        )}
 
+        {product.price_ex_vat && <p className="mt-2 font-semibold">{product.price_ex_vat} kr (exkl. moms)</p>}
+      </div>
+
+      {/* Offertknapp */}
       {onAddToQuote && (
         <Button
           onClick={() => onAddToQuote(product, 1)}
@@ -135,15 +113,5 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
     </div>
   );
 };
-hasMultiple && (
-        <div className="flex justify-center items-center gap-8 mt-4">
-          <button
-            onClick={handlePrev}
-            className="bg-black/70 text-white px-4 py-2 rounded-full hover:bg-black/90 transition"
-          >
-            ◀
-          </button>
-          <p className="text-sm font-medium text-gray-700">
-            {currentColor} ({currentIndex + 1}/{variations.length})
-  
+
 export default ProductDisplay;
