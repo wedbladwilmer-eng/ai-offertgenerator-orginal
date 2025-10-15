@@ -246,17 +246,20 @@ const Quote = () => {
                   {/* Product Images - All variations in a grid */}
                   <div className="space-y-4">
                     {(() => {
-                      // Get the selected color variation image URL
+                      // Get base image URL and construct different angles
                       const baseImageUrl = product.image_url || '';
                       
-                      // Extract the base URL without the suffix (before _Front, _Right, etc.)
-                      const baseUrl = baseImageUrl.replace(/_[A-Za-z]+\.(jpg|png|jpeg)$/i, '');
+                      // Find the last part after the last underscore and before .jpg/.png
+                      // Example: https://images.nwgmedia.com/preview/109701/032107_99_ActiveLadiesTank.jpg
+                      // Should become: https://images.nwgmedia.com/preview/109701/032107_99_ActiveLadiesTank_Front.jpg
+                      
+                      const urlWithoutExtension = baseImageUrl.replace(/\.(jpg|png|jpeg)$/i, '');
                       
                       const views = {
-                        front: `${baseUrl}_Front.jpg`,
-                        right: `${baseUrl}_Right.jpg`,
-                        back: `${baseUrl}_Back.jpg`,
-                        left: `${baseUrl}_Left.jpg`
+                        front: `${urlWithoutExtension}_Front.jpg`,
+                        right: `${urlWithoutExtension}_Right.jpg`,
+                        back: `${urlWithoutExtension}_Back.jpg`,
+                        left: `${urlWithoutExtension}_Left.jpg`
                       };
 
                       const viewLabels = {
@@ -385,17 +388,17 @@ const Quote = () => {
                 <h3 className="text-lg font-semibold mb-4">🖼️ Välj vinklar till offerten</h3>
                 <div className="grid grid-cols-2 gap-4">
                   {(() => {
-                    // Get the selected color variation image URL
+                    // Get base image URL and construct different angles
                     const baseImageUrl = product.image_url || '';
                     
-                    // Extract the base URL without the suffix (before _Front, _Right, etc.)
-                    const baseUrl = baseImageUrl.replace(/_[A-Za-z]+\.(jpg|png|jpeg)$/i, '');
+                    // Find the last part after the last underscore and before .jpg/.png
+                    const urlWithoutExtension = baseImageUrl.replace(/\.(jpg|png|jpeg)$/i, '');
                     
                     const views = {
-                      front: `${baseUrl}_Front.jpg`,
-                      right: `${baseUrl}_Right.jpg`,
-                      back: `${baseUrl}_Back.jpg`,
-                      left: `${baseUrl}_Left.jpg`
+                      front: `${urlWithoutExtension}_Front.jpg`,
+                      right: `${urlWithoutExtension}_Right.jpg`,
+                      back: `${urlWithoutExtension}_Back.jpg`,
+                      left: `${urlWithoutExtension}_Left.jpg`
                     };
 
                     const toggleView = (view: string) => {
