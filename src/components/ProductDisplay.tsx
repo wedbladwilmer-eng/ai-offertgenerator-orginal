@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 
 type ProductDisplayProps = {
@@ -9,152 +8,77 @@ type ProductDisplayProps = {
 };
 
 const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }) => {
-  const [currentVariationIndex, setCurrentVariationIndex] = useState(0);
+  if (!product) return null;
 
-  // Debug logging
-  useEffect(() => {
-    console.log("🔍 ProductDisplay Debug Info:");
-    console.log("📦 Product:", product);
-    console.log("🎨 Variations:", product?.variations);
-    console.log("📊 Variations length:", product?.variations?.length || 0);
-    console.log("🔢 Current variation index:", currentVariationIndex);
-  }, [product, currentVariationIndex]);
+  const variations = product.variations || [];
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  if (!product) {
-    console.log("❌ No product provided to ProductDisplay");
-    return null;
-  }
+  const currentImage = variations.length > 0 ? variations[currentIndex]?.image_url : product.image_url;
 
-  const variations = product?.variations || [];
-  const hasMultipleVariations = variations.length > 1;
+  const currentColor = variations.length > 0 ? variations[currentIndex]?.color : "Standard";
 
-  console.log("🎯 Has multiple variations:", hasMultipleVariations);
-  console.log("🎨 Variations array:", variations);
-
-  const currentVariation = variations.length > 0 ? variations[currentVariationIndex] : null;
-  const currentImage = currentVariation?.image_url || product?.image_url;
-  const currentColor = currentVariation?.color || "Standard";
-
-  console.log("🖼️ Current image:", currentImage);
-  console.log("🎨 Current color:", currentColor);
-
-  const handlePrevious = () => {
-    console.log("⬅️ Previous button clicked");
-    setCurrentVariationIndex((prev) => {
-      const newIndex = prev === 0 ? variations.length - 1 : prev - 1;
-      console.log("📍 New index:", newIndex);
-      return newIndex;
-    });
-  };
+  const hasMultiple = variations.length > 1;
 
   const handleNext = () => {
-    console.log("➡️ Next button clicked");
-    setCurrentVariationIndex((prev) => {
-      const newIndex = (prev + 1) % variations.length;
-      console.log("📍 New index:", newIndex);
-      return newIndex;
-    });
+    setCurrentIndex((prev) => (prev + 1) % variations.length);
+  };
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev === 0 ? variations.length - 1 : prev - 1));
   };
 
   return (
-    <div className="flex flex-col items-center gap-4 p-6 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-semibold text-center">{product.name}</h2>
+    <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg text-center">
+      <h2 className="text-2xl font-semibold mb-4">{product.name}</h2>
 
-      {/* Debug info - remove this in production */}
-      <div className="bg-gray-100 p-2 rounded text-xs text-gray-600 w-full">
-        <p>🔍 Debug: Variations count: {variations.length}</p>
-        <p>🔍 Debug: Has multiple: {hasMultipleVariations ? "YES" : "NO"}</p>
-        <p>🔍 Debug: Current index: {currentVariationIndex}</p>
-        <p>🔍 Debug: Current color: {currentColor}</p>
-      </div>
+      <div className="relative flex justify-center items-center w-full">
+        {currentImage ? (
+          <img
+            src={currentImage}
+            alt={product.name}
+            className="w-full h-auto max-h-[420px] object-contain rounded-lg shadow transition-all duration-300"
+          />
+        ) : (
+          <p className="text-gray-500 italic">Ingen bild tillgänglig</p>
+        )}
 
-      <div className="relative flex items-center justify-center w-full">
-        {/* Image container */}
-        <div className="flex-1 flex justify-center">
-          {currentImage ? (
-            <img
-              src={currentImage}
-              alt={`${product.name} - ${currentColor}`}
-              className="max-h-[400px] max-w-full object-contain rounded-lg shadow-md transition-all duration-300"
-              onError={(e) => {
-                console.error("❌ Image failed to load:", currentImage);
-                (e.target as HTMLImageElement).src = "/placeholder.svg";
-              }}
-              onLoad={() => {
-                console.log("✅ Image loaded successfully:", currentImage);
-              }}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-[400px] bg-gray-100 rounded-lg">
-              <span className="text-gray-500 italic">No image available</span>
-            </div>
-          )}
-        </div>
-
-        {/* Navigation arrows - Always visible when hasMultipleVariations is true */}
-        {hasMultipleVariations && (
+        {hasMultiple && (
           <>
+            {/* Vänsterpil */}
             <button
-              onClick={handlePrevious}
-              className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg border border-gray-200 transition-all duration-200 z-10"
-              aria-label="Previous variation"
+              onClick={handlePrev}
+              className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70 rounded-full p-2 shadow-lg transition-all z-20"
+              aria-label="Föregående färg"
             >
-              <ChevronLeft className="w-5 h-5 text-gray-700" />
+              ◀
             </button>
 
+            {/* Högerpil */}
             <button
               onClick={handleNext}
-              className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg border border-gray-200 transition-all duration-200 z-10"
-              aria-label="Next variation"
+              className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70 rounded-full p-2 shadow-lg transition-all z-20"
+              aria-label="Nästa färg"
             >
-              <ChevronRight className="w-5 h-5 text-gray-700" />
+              ▶
             </button>
           </>
         )}
       </div>
 
-      {/* Color indicator */}
-      <div className="text-center">
-        <p className="text-sm text-gray-600">
-          Color: <span className="font-medium text-gray-800">{currentColor}</span>
+      {/* Info under bilden */}
+      <div className="mt-4">
+        <p className="text-sm text-gray-700">
+          Färg: <span className="font-medium">{currentColor}</span>
         </p>
-        {hasMultipleVariations && (
-          <p className="text-xs text-gray-500 mt-1">
-            {currentVariationIndex + 1} of {variations.length} variations
-          </p>
-        )}
+        {product.price_ex_vat && <p className="mt-2 font-semibold">{product.price_ex_vat} kr (exkl. moms)</p>}
       </div>
 
-      {/* Price */}
-      <p className="text-lg font-semibold text-center">
-        {product.price_ex_vat ? `${product.price_ex_vat} kr (excl. VAT)` : "Price on request"}
-      </p>
-
-      {/* Color dots indicator */}
-      {hasMultipleVariations && (
-        <div className="flex gap-2 justify-center">
-          {variations.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => {
-                console.log("🎯 Dot clicked, setting index to:", index);
-                setCurrentVariationIndex(index);
-              }}
-              className={`w-3 h-3 rounded-full border-2 transition-all duration-200 ${
-                index === currentVariationIndex
-                  ? "bg-blue-500 border-blue-500"
-                  : "bg-gray-200 border-gray-300 hover:border-gray-400"
-              }`}
-              aria-label={`Select variation ${index + 1}`}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Add to quote button */}
       {onAddToQuote && (
-        <Button onClick={() => onAddToQuote(product, 1)} className="mt-4">
-          Add to quote
+        <Button
+          onClick={() => onAddToQuote(product, 1)}
+          className="mt-5 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
+        >
+          Lägg till i offert
         </Button>
       )}
     </div>
