@@ -47,7 +47,7 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg text-center">
+    <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg text-center overflow-visible relative">
       <h2 className="text-2xl font-semibold mb-4">{product.name}</h2>
 
       {/* Bildsektionen */}
@@ -73,14 +73,14 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
             <button
               onClick={handlePrev}
               aria-label="Föregående färg"
-              className="absolute left-5 top-1/2 -translate-y-1/2 bg-black/70 text-white hover:bg-black/90 rounded-full p-3 shadow-xl border border-white/30 backdrop-blur-sm z-30 transition-all hover:scale-110"
+              className="absolute left-5 top-1/2 -translate-y-1/2 bg-black/70 text-white hover:bg-black/90 rounded-full p-3 shadow-xl border border-white/30 backdrop-blur-sm z-50 transition-all hover:scale-110"
             >
               ◀
             </button>
             <button
               onClick={handleNext}
               aria-label="Nästa färg"
-              className="absolute right-5 top-1/2 -translate-y-1/2 bg-black/70 text-white hover:bg-black/90 rounded-full p-3 shadow-xl border border-white/30 backdrop-blur-sm z-30 transition-all hover:scale-110"
+              className="absolute right-5 top-1/2 -translate-y-1/2 bg-black/70 text-white hover:bg-black/90 rounded-full p-3 shadow-xl border border-white/30 backdrop-blur-sm z-50 transition-all hover:scale-110"
             >
               ▶
             </button>
