@@ -47,7 +47,7 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
             {/* Vänsterpil */}
             <button
               onClick={handlePrev}
-              className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70 rounded-full p-2 shadow-lg transition-all z-20"
+              className="absolute left-10 top-1/2 -translate-y-1/2 bg-black/70 text-white hover:bg-black/90 hover:scale-110 rounded-full p-3 shadow-xl border-2 border-white/30 backdrop-blur-sm transition-all z-30"
               aria-label="Föregående färg"
             >
               ◀
@@ -56,7 +56,7 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
             {/* Högerpil */}
             <button
               onClick={handleNext}
-              className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70 rounded-full p-2 shadow-lg transition-all z-20"
+              className="absolute right-10 top-1/2 -translate-y-1/2 bg-black/70 text-white hover:bg-black/90 hover:scale-110 rounded-full p-3 shadow-xl border-2 border-white/30 backdrop-blur-sm transition-all z-30"
               aria-label="Nästa färg"
             >
               ▶
