@@ -73,14 +73,14 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
             <button
               onClick={handlePrev}
               aria-label="Föregående färg"
-              className="absolute left-5 top-1/2 -translate-y-1/2 bg-black/70 text-white hover:bg-black/90 rounded-full p-3 shadow-xl border border-white/30 backdrop-blur-sm z-50 transition-all hover:scale-110"
+              className="absolute left-4 top-1/2 -translate-y-1/2 bg-red-600 text-white hover:bg-red-700 rounded-full p-3 shadow-lg z-[999] transition-all hover:scale-110"
             >
               ◀
             </button>
             <button
               onClick={handleNext}
               aria-label="Nästa färg"
-              className="absolute right-5 top-1/2 -translate-y-1/2 bg-black/70 text-white hover:bg-black/90 rounded-full p-3 shadow-xl border border-white/30 backdrop-blur-sm z-50 transition-all hover:scale-110"
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-red-600 text-white hover:bg-red-700 rounded-full p-3 shadow-lg z-[999] transition-all hover:scale-110"
             >
               ▶
             </button>
