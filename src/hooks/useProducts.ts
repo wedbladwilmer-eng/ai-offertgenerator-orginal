@@ -12,33 +12,13 @@ export type Product = {
   logo_position: string | null;
   brand?: string;
   slug?: string;
-  variations?: Array<{ color: string }>;
+  variations?: Array<{
+    color: string;
+    colorCode?: string;
+    articleNumber?: string;
+    image_url?: string;
+  }>;
 };
-
-// ✅ Funktion för att hämta produktdata från din Supabase Edge Function
-export async function fetchProduct(articleNumber: string): Promise<Product | null> {
-  try {
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/new-wave-proxy`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ articleNumber }),
-    });
-
-    if (!response.ok) {
-      console.error("Failed to fetch product:", await response.text());
-      return null;
-    }
-
-    const data = await response.json();
-    console.log("✅ Product fetched:", data);
-    return data as Product;
-  } catch (error) {
-    console.error("Error fetching product:", error);
-    return null;
-  }
-}
 
 export type QuoteItem = {
   product: Product;
@@ -53,10 +33,10 @@ export const useProducts = () => {
   const [quote, setQuote] = useState<QuoteItem[]>([]);
   const { toast } = useToast();
 
-  // Function to fetch product data via Supabase Edge Function
+  // 🧩 Hämta produktdata från nya Edge Function "new-wave-proxy"
   const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
     try {
-      const { data, error } = await supabase.functions.invoke("new_wave_proxy_2025_10_13_00_04", {
+      const { data, error } = await supabase.functions.invoke("new-wave-proxy", {
         body: { articleNumber },
       });
 
@@ -64,17 +44,19 @@ export const useProducts = () => {
         throw new Error(error.message || "Failed to fetch product data");
       }
 
-      if (data.error) {
-        throw new Error(data.error);
+      if (!data) {
+        throw new Error("No data returned from new-wave-proxy");
       }
 
+      console.log("✅ Product fetched from Edge Function:", data);
       return data as Product;
     } catch (error) {
-      console.error("Error fetching from New Wave API:", error);
+      console.error("Error fetching from new-wave-proxy:", error);
       throw error;
     }
   };
 
+  // 🔍 Sök produkt via artikelnummer
   const searchByArticleNumber = async (articleNumber: string) => {
     if (!articleNumber.trim()) {
       toast({
@@ -116,6 +98,7 @@ export const useProducts = () => {
     }
   };
 
+  // ➕ Lägg till produkt i offert
   const addToQuote = (product: Product, quantity: number) => {
     const existingItem = quote.find((item) => item.product.id === product.id);
 
@@ -133,10 +116,12 @@ export const useProducts = () => {
     });
   };
 
+  // ✏️ Uppdatera offertpost
   const updateQuoteItem = (productId: string, updates: Partial<QuoteItem>) => {
     setQuote(quote.map((item) => (item.product.id === productId ? { ...item, ...updates } : item)));
   };
 
+  // ❌ Ta bort från offert
   const removeFromQuote = (productId: string) => {
     setQuote(quote.filter((item) => item.product.id !== productId));
     toast({
@@ -145,10 +130,12 @@ export const useProducts = () => {
     });
   };
 
+  // 🧹 Töm hela offerten
   const clearQuote = () => {
     setQuote([]);
   };
 
+  // 💰 Beräkna totalsumma exkl. moms
   const getQuoteTotal = () => {
     return quote.reduce((total, item) => {
       const price = item.product.price_ex_vat || 0;
@@ -156,8 +143,9 @@ export const useProducts = () => {
     }, 0);
   };
 
+  // 💰 Beräkna totalsumma inkl. moms
   const getQuoteTotalWithVat = () => {
-    return getQuoteTotal() * 1.25; // 25% VAT
+    return getQuoteTotal() * 1.25; // 25% moms
   };
 
   return {
