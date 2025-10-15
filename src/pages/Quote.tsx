@@ -36,7 +36,7 @@ const Quote = () => {
     if (mockupParam) setMockupUrl(mockupParam);
   }, [productId, mockupParam]);
 
-  // 🟢 Hämta produktdata
+  // 🔹 Hämta produktdata via Supabase Edge Function
   const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
     try {
       const { data, error } = await supabase.functions.invoke("new-wave-proxy", {
@@ -66,7 +66,8 @@ const Quote = () => {
         return;
       }
       setProduct(productData);
-    } catch {
+    } catch (error) {
+      console.error("Error:", error);
       toast({
         title: "Fel",
         description: "Kunde inte hämta produktinformation från New Wave",
@@ -77,7 +78,7 @@ const Quote = () => {
     }
   };
 
-  // 🟢 Hantera val av vinklar
+  // 🔹 Hantera val av vinklar
   const toggleView = (view: string) => {
     setSelectedViews((prev) => (prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]));
   };
@@ -92,16 +93,13 @@ const Quote = () => {
     );
   }
 
-  // 🟢 Dynamiskt generera bildlänkar
-  const baseId = product.id?.split("-")[0] || product.id;
-  const colorCode = product.id?.split("-")[1] || "91";
-  const cleanName = product.name.replace(/\s+/g, "_");
-
+  // 🔹 Dynamiskt skapa bildvinklar (fallback-metod)
+  const imageBase = product.image_url?.replace(/_Front\.jpg$/i, "") || product.image_url?.replace(/\.jpg$/i, "") || "";
   const productViews = {
-    front: `https://images.nwgmedia.com/preview/${baseId}/${baseId}-${colorCode}_${cleanName}_Front.jpg`,
-    right: `https://images.nwgmedia.com/preview/${baseId}/${baseId}-${colorCode}_${cleanName}_Right.jpg`,
-    back: `https://images.nwgmedia.com/preview/${baseId}/${baseId}-${colorCode}_${cleanName}_Back.jpg`,
-    left: `https://images.nwgmedia.com/preview/${baseId}/${baseId}-${colorCode}_${cleanName}_Left.jpg`,
+    front: `${imageBase}_Front.jpg`,
+    right: `${imageBase}_Right.jpg`,
+    back: `${imageBase}_Back.jpg`,
+    left: `${imageBase}_Left.jpg`,
   };
 
   const marginMultiplier = parseFloat(margin);
@@ -109,7 +107,7 @@ const Quote = () => {
   const priceWithMargin = basePrice * marginMultiplier;
   const totalPrice = priceWithMargin * quantity;
 
-  // 🟢 Skapa PDF
+  // 🔹 Skapa PDF
   const handleGeneratePDF = async () => {
     if (!customerName.trim()) {
       toast({
@@ -121,18 +119,19 @@ const Quote = () => {
     }
 
     setIsGenerating(true);
+
     try {
       const quoteData = {
         quote: [
           {
-            product,
-            quantity,
+            product: product,
+            quantity: quantity,
             mockup_url: mockupUrl,
             selectedViews,
           },
         ],
         companyName: customerName,
-        customerName,
+        customerName: customerName,
         total: totalPrice / 1.25,
         totalWithVat: totalPrice,
       };
@@ -153,7 +152,7 @@ const Quote = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* 🔹 Header */}
+      {/* Header */}
       <div className="bg-white border-b shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -172,7 +171,7 @@ const Quote = () => {
         </div>
       </div>
 
-      {/* 🔹 Innehåll */}
+      {/* Quote Content */}
       <div className="max-w-4xl mx-auto px-6 py-8">
         <Card className="bg-white shadow-lg">
           <CardHeader className="text-center border-b bg-muted/30">
@@ -184,7 +183,7 @@ const Quote = () => {
           </CardHeader>
 
           <CardContent className="p-8 space-y-8">
-            {/* 🔹 Kunduppgifter */}
+            {/* Kunduppgifter */}
             <div className="bg-muted/30 p-6 rounded-lg">
               <div className="grid lg:grid-cols-2 gap-4">
                 <div>
@@ -215,18 +214,18 @@ const Quote = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground mt-1">Syns inte i PDF</p>
+                  <p className="text-xs text-muted-foreground mt-1">Syns inte i PDF:en</p>
                 </div>
               </div>
             </div>
 
             <Separator />
 
-            {/* 🔹 Produktinformation */}
+            {/* Produktinformation */}
             <div>
               <h2 className="text-xl font-semibold mb-6">Produktinformation</h2>
               <div className="grid lg:grid-cols-2 gap-8">
-                {/* 🔸 Bild & vinklar */}
+                {/* Bilder */}
                 <div className="space-y-4">
                   <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
                     <img
@@ -236,6 +235,7 @@ const Quote = () => {
                     />
                   </div>
 
+                  {/* Välj vinklar */}
                   <div>
                     <h4 className="font-semibold mb-2">🖼️ Välj vinklar till offerten</h4>
                     <div className="grid grid-cols-2 gap-4">
@@ -260,7 +260,7 @@ const Quote = () => {
                   </div>
                 </div>
 
-                {/* 🔸 Produktdetaljer */}
+                {/* Produktdetaljer */}
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -299,7 +299,7 @@ const Quote = () => {
 
             <Separator />
 
-            {/* 🔹 Prissammanställning */}
+            {/* Pris */}
             <div>
               <h3 className="text-lg font-semibold mb-4">Prissättning</h3>
               <div className="overflow-hidden rounded-lg border">
@@ -318,9 +318,7 @@ const Quote = () => {
               </div>
             </div>
 
-            <Separator />
-
-            {/* 🔹 Sammanfattning */}
+            {/* Totalt */}
             <div className="bg-muted/30 p-6 rounded-lg">
               <div className="flex justify-between text-lg font-bold text-primary max-w-sm ml-auto">
                 <span>TOTALT:</span>
@@ -328,7 +326,7 @@ const Quote = () => {
               </div>
             </div>
 
-            {/* 🔹 PDF-knapp */}
+            {/* PDF-knapp */}
             <div className="flex justify-center pt-4">
               <Button
                 onClick={handleGeneratePDF}
