@@ -1,34 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Download, ArrowLeft } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { generatePDF } from '@/utils/pdfGenerator';
-import { Product } from '@/hooks/useProducts';
-import kostaNadaProfilLogo from '@/assets/kosta-nada-profil-logo.png';
+import React, { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Download, ArrowLeft, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { generatePDF } from "@/utils/pdfGenerator";
+import { Product } from "@/hooks/useProducts";
+import kostaNadaProfilLogo from "@/assets/kosta-nada-profil-logo.png";
 
 const Quote = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [product, setProduct] = useState<Product | null>(null);
-  const [mockupUrl, setMockupUrl] = useState<string>('');
+  const [mockupUrl, setMockupUrl] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
-  const [customerName, setCustomerName] = useState('');
-  const [margin, setMargin] = useState('2');
+  const [customerName, setCustomerName] = useState("");
+  const [margin, setMargin] = useState("2");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
   const [selectedViews, setSelectedViews] = useState<string[]>(["front", "right", "back", "left"]);
 
-  const productId = searchParams.get('productId');
-  const mockupParam = searchParams.get('mockup');
+  const productId = searchParams.get("productId");
+  const mockupParam = searchParams.get("mockup");
 
   useEffect(() => {
     if (productId) {
@@ -39,35 +40,27 @@ const Quote = () => {
     }
   }, [productId, mockupParam]);
 
-  // Function to fetch product data via New Wave API
+  // 🔹 Hämta produktdata via Supabase Edge Function
   const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
     try {
-      const { data, error } = await supabase.functions.invoke('new-wave-proxy', {
-        body: { articleNumber }
+      const { data, error } = await supabase.functions.invoke("new-wave-proxy", {
+        body: { articleNumber },
       });
 
-      if (error) {
-        throw new Error(error.message || 'Failed to fetch product data');
-      }
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
+      if (error) throw new Error(error.message || "Failed to fetch product data");
+      if (data.error) throw new Error(data.error);
       return data as Product;
     } catch (error) {
-      console.error('Error fetching from New Wave API:', error);
+      console.error("Error fetching from New Wave API:", error);
       throw error;
     }
   };
 
   const fetchProduct = async () => {
     if (!productId) return;
-
     setIsLoading(true);
     try {
       const productData = await fetchProductData(productId);
-      
       if (!productData) {
         toast({
           title: "Produkt ej hittad",
@@ -77,10 +70,9 @@ const Quote = () => {
         setProduct(null);
         return;
       }
-
       setProduct(productData);
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
       toast({
         title: "Fel",
         description: "Kunde inte hämta produktinformation från New Wave",
@@ -91,14 +83,17 @@ const Quote = () => {
     }
   };
 
+  // 🔹 Hantera val av vinklar
+  const toggleView = (view: string) => {
+    setSelectedViews((prev) => (prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]));
+  };
+
   if (isLoading || !product) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">
-            {isLoading ? 'Laddar produktinformation...' : 'Produktinformation kunde inte laddas'}
-          </p>
-        </div>
+        <p className="text-muted-foreground">
+          {isLoading ? "Laddar produktinformation..." : "Produktinformation kunde inte laddas"}
+        </p>
       </div>
     );
   }
@@ -106,7 +101,6 @@ const Quote = () => {
   const marginMultiplier = parseFloat(margin);
   const basePrice = product.price_ex_vat || 0;
   const priceWithMargin = basePrice * marginMultiplier;
-  // Prices from New Wave already include VAT, so no need to add VAT again
   const totalPrice = priceWithMargin * quantity;
 
   const handleGeneratePDF = async () => {
@@ -123,27 +117,24 @@ const Quote = () => {
 
     try {
       const quoteData = {
-        quote: [{
-          product: product,
-          quantity: quantity,
-          mockup_url: mockupUrl
-        }],
+        quote: [
+          {
+            product: product,
+            quantity: quantity,
+            mockup_url: mockupUrl,
+            selectedViews, // 🔹 Skicka med valda vinklar
+          },
+        ],
         companyName: customerName,
         customerName: customerName,
-        total: totalPrice / 1.25, // Ex VAT (for PDF calculation)
+        total: totalPrice / 1.25,
         totalWithVat: totalPrice,
-        selectedViews: selectedViews
       };
 
       await generatePDF(quoteData);
-
-      toast({
-        title: "Offert skapad!",
-        description: "PDF:en har sparats och laddats ner.",
-      });
-
+      toast({ title: "Offert skapad!", description: "PDF:en har sparats och laddats ner." });
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.error("Error generating PDF:", error);
       toast({
         title: "Fel vid skapande av offert",
         description: "Något gick fel. Försök igen.",
@@ -154,26 +145,26 @@ const Quote = () => {
     }
   };
 
+  // 🔹 Exempelvinklar (kan göras dynamiska senare)
+  const productViews = {
+    front: "https://images.nwgmedia.com/preview/377113/0201050-91_Miami_PRO_Roundneck_Front.jpg",
+    right: "https://images.nwgmedia.com/preview/386550/0201050-91_MiamiPRORoundneck_grey_Right.jpg",
+    back: "https://images.nwgmedia.com/preview/386560/0201050-91_MiamiPRORoundneck_grey_Back.jpg",
+    left: "https://images.nwgmedia.com/preview/386562/0201050-91_MiamiPRORoundneck_grey_Left.jpg",
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-white border-b shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/')}
-              className="gap-2"
-            >
+            <Button variant="ghost" onClick={() => navigate("/")} className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               Tillbaka
             </Button>
             <div className="flex items-center gap-4">
-              <img 
-                src={kostaNadaProfilLogo} 
-                alt="Kosta Nada Profil AB" 
-                className="h-16 w-auto object-contain"
-              />
+              <img src={kostaNadaProfilLogo} alt="Kosta Nada Profil AB" className="h-16 w-auto object-contain" />
               <div>
                 <h1 className="text-xl font-bold text-foreground">Kosta Nada Profil AB</h1>
                 <p className="text-sm text-muted-foreground">Professionella produkter med logotyp</p>
@@ -189,14 +180,14 @@ const Quote = () => {
           <CardHeader className="text-center border-b bg-muted/30">
             <h1 className="text-4xl font-bold text-primary">OFFERT</h1>
             <div className="flex justify-center gap-8 text-sm text-muted-foreground mt-2">
-              <span>Datum: {new Date().toLocaleDateString('sv-SE')}</span>
+              <span>Datum: {new Date().toLocaleDateString("sv-SE")}</span>
               <span>Offertnummer: OFF-{Date.now().toString().slice(-6)}</span>
             </div>
           </CardHeader>
 
           <CardContent className="p-8">
             <div className="space-y-8">
-              {/* Customer Info */}
+              {/* Kunduppgifter */}
               <div className="bg-muted/30 p-6 rounded-lg">
                 <div className="grid lg:grid-cols-2 gap-4">
                   <div>
@@ -211,7 +202,7 @@ const Quote = () => {
                       className="mt-2"
                     />
                   </div>
-                  <div className={`margin-calculator-field ${isGenerating ? 'hidden' : ''}`}>
+                  <div>
                     <Label htmlFor="margin-select" className="text-base font-semibold text-orange-600">
                       Marginal (endast för beräkning) *
                     </Label>
@@ -230,84 +221,52 @@ const Quote = () => {
                         <SelectItem value="5">1:5</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Detta fält syns inte för kunden i PDF:en
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Detta fält syns inte för kunden i PDF:en</p>
                   </div>
                 </div>
               </div>
 
               <Separator />
 
-              {/* Product Section */}
+              {/* Produktinformation */}
               <div>
                 <h2 className="text-xl font-semibold mb-6">Produktinformation</h2>
                 <div className="grid lg:grid-cols-2 gap-8">
-                  {/* Product Images - All variations in a grid */}
                   <div className="space-y-4">
-                    {(() => {
-                      // Get base image URL and construct different angles
-                      const baseImageUrl = product.image_url || '';
-                      
-                      // Find the last part after the last underscore and before .jpg/.png
-                      // Example: https://images.nwgmedia.com/preview/109701/032107_99_ActiveLadiesTank.jpg
-                      // Should become: https://images.nwgmedia.com/preview/109701/032107_99_ActiveLadiesTank_Front.jpg
-                      
-                      const urlWithoutExtension = baseImageUrl.replace(/\.(jpg|png|jpeg)$/i, '');
-                      
-                      const views = {
-                        front: `${urlWithoutExtension}_Front.jpg`,
-                        right: `${urlWithoutExtension}_Right.jpg`,
-                        back: `${urlWithoutExtension}_Back.jpg`,
-                        left: `${urlWithoutExtension}_Left.jpg`
-                      };
+                    <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
+                      <img
+                        src={mockupUrl || product.image_url || "/placeholder.svg"}
+                        alt={product.name}
+                        className="max-h-[400px] w-auto object-contain rounded-sm border border-border"
+                      />
+                    </div>
 
-                      const viewLabels = {
-                        front: "Framsida",
-                        right: "Höger",
-                        back: "Baksida",
-                        left: "Vänster"
-                      };
-
-                      return (
-                        <div className="grid grid-cols-2 gap-3">
-                          {Object.entries(views).map(([key, url]) => (
-                            <div key={key} className="bg-white p-3 rounded-lg border">
-                              <img
-                                src={url}
-                                alt={viewLabels[key as keyof typeof viewLabels]}
-                                className="w-full h-auto object-contain rounded-sm"
-                                onError={(e) => {
-                                  e.currentTarget.src = mockupUrl || product.image_url || '/placeholder.svg';
-                                }}
-                              />
-                              <p className="text-xs text-center mt-2 text-muted-foreground">
-                                {viewLabels[key as keyof typeof viewLabels]}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                    {mockupUrl && (
-                      <div className="bg-white p-4 rounded-lg border">
-                        <img
-                          src={mockupUrl}
-                          alt="Produkt med din logotyp"
-                          className="w-full h-auto object-contain rounded-sm"
-                          onError={(e) => {
-                            console.error('Failed to load mockup image');
-                            e.currentTarget.src = '/placeholder.svg';
-                          }}
-                        />
-                        <p className="text-sm text-muted-foreground mt-2 text-center">
-                          Med din logotyp
-                        </p>
+                    {/* 🖼️ Ny sektion: välj vinklar */}
+                    <div>
+                      <h4 className="font-semibold mb-2">🖼️ Välj vilka vinklar du vill inkludera i offerten</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        {Object.entries(productViews).map(([key, url]) => (
+                          <div key={key} className="relative">
+                            <img
+                              src={url}
+                              alt={key}
+                              className={`rounded-lg border-2 ${
+                                selectedViews.includes(key) ? "border-blue-500" : "border-gray-300 opacity-40"
+                              } transition-all`}
+                            />
+                            <button
+                              onClick={() => toggleView(key)}
+                              className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    )}
+                    </div>
                   </div>
 
-                  {/* Product Details */}
+                  {/* Produktdetaljer */}
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -326,11 +285,10 @@ const Quote = () => {
                       )}
                       <div>
                         <Label className="font-semibold">Grundpris (inkl. moms)</Label>
-                        <p className="mt-1">{basePrice.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</p>
+                        <p className="mt-1">{basePrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr</p>
                       </div>
                     </div>
 
-                    {/* Controls */}
                     <div className="max-w-xs">
                       <Label htmlFor="quantity">Antal</Label>
                       <Input
@@ -347,7 +305,7 @@ const Quote = () => {
 
               <Separator />
 
-              {/* Price Table */}
+              {/* Prisdel */}
               <div>
                 <h3 className="text-lg font-semibold mb-4">Prissättning</h3>
                 <div className="overflow-hidden rounded-lg border">
@@ -362,103 +320,39 @@ const Quote = () => {
                   <div className="bg-muted/30 p-4">
                     <div className="grid grid-cols-4 gap-4">
                       <span>{product.id}</span>
-                      <span>{priceWithMargin.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</span>
+                      <span>{priceWithMargin.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr</span>
                       <span>{quantity}</span>
-                      <span className="font-semibold">{totalPrice.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</span>
+                      <span className="font-semibold">
+                        {totalPrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Summary */}
+              {/* Sammanfattning */}
               <div className="bg-muted/30 p-6 rounded-lg">
                 <div className="space-y-2 max-w-sm ml-auto">
                   <Separator />
                   <div className="flex justify-between text-lg font-bold text-primary">
                     <span>TOTALT (inkl. moms):</span>
-                    <span>{totalPrice.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</span>
+                    <span>{totalPrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr</span>
                   </div>
                 </div>
               </div>
 
-              <Separator />
-
-              {/* Product Angles Selection */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">🖼️ Välj vinklar till offerten</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {(() => {
-                    // Get base image URL and construct different angles
-                    const baseImageUrl = product.image_url || '';
-                    
-                    // Find the last part after the last underscore and before .jpg/.png
-                    const urlWithoutExtension = baseImageUrl.replace(/\.(jpg|png|jpeg)$/i, '');
-                    
-                    const views = {
-                      front: `${urlWithoutExtension}_Front.jpg`,
-                      right: `${urlWithoutExtension}_Right.jpg`,
-                      back: `${urlWithoutExtension}_Back.jpg`,
-                      left: `${urlWithoutExtension}_Left.jpg`
-                    };
-
-                    const toggleView = (view: string) => {
-                      setSelectedViews((prev) =>
-                        prev.includes(view) ? prev.filter(v => v !== view) : [...prev, view]
-                      );
-                    };
-
-                    const viewLabels = {
-                      front: "Framsida",
-                      right: "Höger sida",
-                      back: "Baksida",
-                      left: "Vänster sida"
-                    };
-
-                    return Object.entries(views).map(([key, url]) => (
-                      <div key={key} className="relative">
-                        <img
-                          src={url}
-                          alt={viewLabels[key as keyof typeof viewLabels]}
-                          className={`rounded-lg border-2 transition-all ${
-                            selectedViews.includes(key)
-                              ? "border-blue-500"
-                              : "border-gray-300 opacity-40"
-                          }`}
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                        <button
-                          onClick={() => toggleView(key)}
-                          className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700 transition-colors"
-                          aria-label={selectedViews.includes(key) ? "Ta bort vinkel" : "Lägg till vinkel"}
-                        >
-                          ✕
-                        </button>
-                        <p className="text-xs text-center mt-1 text-muted-foreground">
-                          {viewLabels[key as keyof typeof viewLabels]}
-                        </p>
-                      </div>
-                    ));
-                  })()}
-                </div>
-                <p className="text-sm text-muted-foreground mt-4">
-                  Klicka på ✕ för att ta bort en vinkel från offerten. Vinklar med blå ram inkluderas i PDF:en.
-                </p>
-              </div>
-
-              {/* Terms */}
+              {/* Villkor */}
               <div className="bg-muted/20 p-4 rounded-lg text-sm text-muted-foreground">
                 <h4 className="font-semibold text-foreground mb-2">Villkor och bestämmelser:</h4>
                 <ul className="space-y-1 list-disc list-inside">
                   <li>Offerten gäller i 30 dagar från utställningsdatum</li>
-                  <li>Leveranstid: 2-3 veckor från godkänd beställning</li>
+                  <li>Leveranstid: 2–3 veckor från godkänd beställning</li>
                   <li>Betalningsvillkor: 30 dagar netto</li>
                   <li>Alla priser anges inklusive moms där inget annat anges</li>
                 </ul>
               </div>
 
-              {/* Generate PDF Button */}
+              {/* PDF-knapp */}
               <div className="flex justify-center pt-4">
                 <Button
                   onClick={handleGeneratePDF}
@@ -467,7 +361,7 @@ const Quote = () => {
                   className="gap-2"
                 >
                   <Download className="h-5 w-5" />
-                  {isGenerating ? 'Skapar PDF...' : 'Ladda ner som PDF'}
+                  {isGenerating ? "Skapar PDF..." : "Ladda ner som PDF"}
                 </Button>
               </div>
             </div>
