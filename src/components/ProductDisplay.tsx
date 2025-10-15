@@ -1,14 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface Variation {
   color: string;
   colorCode?: string;
-  image_url?: string;
   articleNumber?: string;
+  image_url?: string;
 }
 
 interface ProductDisplayProps {
   product: {
+    id: string;
     name: string;
     description?: string;
     price_ex_vat?: number;
@@ -19,84 +20,82 @@ interface ProductDisplayProps {
 }
 
 export default function ProductDisplay({ product, onAddToQuote }: ProductDisplayProps) {
-  console.log("🔍 Product received in ProductDisplay:", product);
   if (!product) return <p>Ingen produkt vald</p>;
 
-  // 🧠 State för att hålla koll på vald färgvariant
+  // 🧠 Håll koll på vald variant
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // 🧩 Hämta variationer från produkten (eller fallback till huvudbilden)
-  const variations =
-    product.variations && product.variations.length > 0
-      ? product.variations
-      : [
-          {
-            color: "Standard",
-            image_url: product.image_url,
-          },
-        ];
+  // 🧩 Säkerställ att variations alltid är en lista
+  const variations: Variation[] = Array.isArray(product.variations) ? product.variations : [];
 
-  const currentVariation = variations[currentIndex];
+  const hasMultiple = variations.length > 1;
 
-  // 🔁 Funktioner för att byta bild (vänster/höger)
+  // 🔁 Sätt aktuell variant (eller fallback till huvudproduktens bild)
+  const currentVariant =
+    variations.length > 0 ? variations[currentIndex] : { image_url: product.image_url, color: "Standard" };
+
   const handleNext = () => {
+    if (!hasMultiple) return;
     setCurrentIndex((prev) => (prev + 1) % variations.length);
   };
 
   const handlePrev = () => {
+    if (!hasMultiple) return;
     setCurrentIndex((prev) => (prev - 1 + variations.length) % variations.length);
   };
 
+  useEffect(() => {
+    console.log("🎨 Variations found:", variations);
+  }, [product]);
+
   return (
     <div className="max-w-md mx-auto bg-white p-4 rounded-lg shadow-md text-center">
-      {/* Produktbild */}
-      {currentVariation?.image_url ? (
-        <div className="relative">
+      {/* 🖼️ Bild */}
+      <div className="relative">
+        {currentVariant.image_url ? (
           <img
-            src={currentVariation.image_url}
-            alt={`${product.name} - ${currentVariation.color}`}
-            className="w-full h-auto rounded-md"
+            src={currentVariant.image_url}
+            alt={`${product.name} – ${currentVariant.color}`}
+            className="w-full h-auto rounded-md shadow"
           />
+        ) : (
+          <p className="text-gray-500">Ingen bild tillgänglig</p>
+        )}
 
-          {/* Vänsterpil */}
-          {variations.length > 1 && (
-            <>
-              <button
-                onClick={handlePrev}
-                className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-white bg-opacity-70 hover:bg-opacity-100 rounded-full p-2 shadow"
-                aria-label="Föregående färg"
-              >
-                ◀
-              </button>
+        {/* 🔹 Pilar visas bara om det finns flera variationer */}
+        {hasMultiple && (
+          <>
+            <button
+              onClick={handlePrev}
+              className="absolute bottom-2 left-4 bg-gray-800 text-white rounded-full px-3 py-1 hover:bg-gray-700 transition"
+              aria-label="Föregående färg"
+            >
+              ◀
+            </button>
+            <button
+              onClick={handleNext}
+              className="absolute bottom-2 right-4 bg-gray-800 text-white rounded-full px-3 py-1 hover:bg-gray-700 transition"
+              aria-label="Nästa färg"
+            >
+              ▶
+            </button>
+          </>
+        )}
+      </div>
 
-              {/* Högerpil */}
-              <button
-                onClick={handleNext}
-                className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-white bg-opacity-70 hover:bg-opacity-100 rounded-full p-2 shadow"
-                aria-label="Nästa färg"
-              >
-                ▶
-              </button>
-            </>
-          )}
-        </div>
-      ) : (
-        <p className="text-gray-500">Ingen bild tillgänglig</p>
-      )}
-
-      {/* Färgindikator */}
-      <p className="mt-2 text-sm text-gray-600">
-        Färg: <span className="font-medium">{currentVariation?.color || "Okänd"}</span>
+      {/* 🎨 Färgtext */}
+      <p className="mt-2 text-sm text-gray-700">
+        Färg: <span className="font-medium">{currentVariant.color || "Okänd"}</span>
       </p>
 
-      {/* Produktinformation */}
+      {/* 📦 Produktinfo */}
       <div className="mt-4">
         <h2 className="text-lg font-semibold">{product.name}</h2>
         <p className="text-gray-600">{product.description}</p>
         {product.price_ex_vat && <p className="mt-2 font-medium">{product.price_ex_vat} kr exkl. moms</p>}
       </div>
 
-      {/* Lägg till i offert */}
+      {/* ➕ Lägg till i offert */}
       {onAddToQuote && (
         <button
           onClick={() => onAddToQuote(product, 1)}
