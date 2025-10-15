@@ -228,39 +228,37 @@ const Quote = () => {
             <div>
               <h2 className="text-xl font-semibold mb-6">Produktinformation</h2>
               <div className="grid lg:grid-cols-2 gap-8">
-                {/* Bild */}
-                <div>
-                  <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
-                    <img
-                      src={mockupUrl || product.image_url || "/placeholder.svg"}
-                      alt={product.name}
-                      className="max-h-[400px] w-auto object-contain rounded-sm border border-border"
-                    />
-                  </div>
-
-                  {/* Dynamiska vinklar */}
-                  {Object.keys(validViews).length > 0 && (
-                    <div className="mt-4">
-                      <h4 className="font-semibold mb-2">🖼️ Välj vinklar till offerten</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        {Object.entries(validViews).map(([key, url]) => (
-                          <div key={key} className="relative">
-                            <img
-                              src={url}
-                              alt={key}
-                              className={`rounded-lg border-2 ${
-                                selectedViews.includes(key) ? "border-blue-500" : "border-gray-300 opacity-40"
-                              } transition-all`}
-                            />
-                            <button
-                              onClick={() => toggleView(key)}
-                              className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700"
-                            >
-                              <X size={14} />
-                            </button>
+                {/* Bildvinklar */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold">Välj bildvinklar</h4>
+                  {Object.keys(validViews).length > 0 ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      {Object.entries(validViews).map(([key, url]) => (
+                        <div
+                          key={key}
+                          onClick={() => toggleView(key)}
+                          className={`relative cursor-pointer rounded-lg border-2 overflow-hidden shadow-md transition-all hover:scale-105 ${
+                            selectedViews.includes(key) ? "border-primary" : "border-gray-300 opacity-60"
+                          }`}
+                        >
+                          <img
+                            src={url}
+                            alt={`${product.name} - ${key}`}
+                            className="w-full h-auto object-contain"
+                          />
+                          <div className="absolute top-2 right-2 bg-background/80 rounded-full px-2 py-1 text-xs font-medium">
+                            {selectedViews.includes(key) ? "✓" : "○"}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
+                      <img
+                        src={mockupUrl || product.image_url || "/placeholder.svg"}
+                        alt={product.name}
+                        className="max-h-[300px] w-auto object-contain rounded-sm"
+                      />
                     </div>
                   )}
                 </div>
