@@ -7,11 +7,10 @@ type ProductDisplayProps = {
   onAddToQuote?: (product: Product, quantity: number) => void;
 };
 
-export const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }) => {
+const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }) => {
   const [currentVariationIndex, setCurrentVariationIndex] = useState(0);
   const variations = product?.variations || [];
 
-  // Om variationer finns, använd den aktuella bildadressen
   const currentImage = variations.length > 0 ? variations[currentVariationIndex]?.image_url : product?.image_url;
 
   const currentColor = variations.length > 0 ? variations[currentVariationIndex]?.color : "Standard";
@@ -74,3 +73,5 @@ export const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddTo
     </div>
   );
 };
+
+export default ProductDisplay;
