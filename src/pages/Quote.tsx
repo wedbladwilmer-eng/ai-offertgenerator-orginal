@@ -25,6 +25,7 @@ const Quote = () => {
   const [margin, setMargin] = useState('2');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedViews, setSelectedViews] = useState<string[]>(["front", "right", "back", "left"]);
 
   const productId = searchParams.get('productId');
   const mockupParam = searchParams.get('mockup');
@@ -130,7 +131,8 @@ const Quote = () => {
         companyName: customerName,
         customerName: customerName,
         total: totalPrice / 1.25, // Ex VAT (for PDF calculation)
-        totalWithVat: totalPrice
+        totalWithVat: totalPrice,
+        selectedViews: selectedViews
       };
 
       await generatePDF(quoteData);
@@ -349,6 +351,66 @@ const Quote = () => {
                     <span>{totalPrice.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</span>
                   </div>
                 </div>
+              </div>
+
+              <Separator />
+
+              {/* Product Angles Selection */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">🖼️ Välj vinklar till offerten</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {(() => {
+                    const views = {
+                      front: `https://images.nwgmedia.com/preview/377113/${product.id}_Miami_PRO_Roundneck_Front.jpg`,
+                      right: `https://images.nwgmedia.com/preview/386550/${product.id}_MiamiPRORoundneck_grey_Right.jpg`,
+                      back: `https://images.nwgmedia.com/preview/386560/${product.id}_MiamiPRORoundneck_grey_Back.jpg`,
+                      left: `https://images.nwgmedia.com/preview/386562/${product.id}_MiamiPRORoundneck_grey_Left.jpg`
+                    };
+
+                    const toggleView = (view: string) => {
+                      setSelectedViews((prev) =>
+                        prev.includes(view) ? prev.filter(v => v !== view) : [...prev, view]
+                      );
+                    };
+
+                    const viewLabels = {
+                      front: "Framsida",
+                      right: "Höger sida",
+                      back: "Baksida",
+                      left: "Vänster sida"
+                    };
+
+                    return Object.entries(views).map(([key, url]) => (
+                      <div key={key} className="relative">
+                        <img
+                          src={url}
+                          alt={viewLabels[key as keyof typeof viewLabels]}
+                          className={`rounded-lg border-2 transition-all ${
+                            selectedViews.includes(key)
+                              ? "border-blue-500"
+                              : "border-gray-300 opacity-40"
+                          }`}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                        <button
+                          onClick={() => toggleView(key)}
+                          className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700 transition-colors"
+                          aria-label={selectedViews.includes(key) ? "Ta bort vinkel" : "Lägg till vinkel"}
+                        >
+                          ✕
+                        </button>
+                        <p className="text-xs text-center mt-1 text-muted-foreground">
+                          {viewLabels[key as keyof typeof viewLabels]}
+                        </p>
+                      </div>
+                    ));
+                  })()}
+                </div>
+                <p className="text-sm text-muted-foreground mt-4">
+                  Klicka på ✕ för att ta bort en vinkel från offerten. Vinklar med blå ram inkluderas i PDF:en.
+                </p>
               </div>
 
               {/* Terms */}

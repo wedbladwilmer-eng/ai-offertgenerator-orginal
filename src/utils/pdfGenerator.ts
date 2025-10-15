@@ -8,6 +8,7 @@ interface PDFData {
   customerName: string;
   total: number;
   totalWithVat: number;
+  selectedViews?: string[];
 }
 
 export const generatePDF = async (data: PDFData) => {
@@ -74,21 +75,19 @@ export const generatePDF = async (data: PDFData) => {
   // Product info and mockup image
   const item = data.quote[0];
 
-  // Add mockup or product image if available
-  const imageUrl = item.mockup_url || item.product.image_url;
-
-  if (imageUrl) {
+  // Function to add an image to PDF
+  const addImageToPDF = async (imageUrl: string, x: number, y: number, width: number, height: number) => {
     try {
       console.log("Adding image to PDF:", imageUrl);
 
-      // Use image_proxy_2025_10_13_00_04 for external images
+      // Use image proxy for external images
       const isExternalImage = imageUrl.startsWith("http") && !imageUrl.includes("supabase");
       let finalImageUrl = imageUrl;
 
       if (isExternalImage) {
-        console.log("Proxying external image through image_proxy_2025_10_13_00_04");
+        console.log("Proxying external image through image-proxy");
         const { supabase } = await import("@/integrations/supabase/client");
-        const { data: proxyData, error: proxyError } = await supabase.functions.invoke("image_proxy_2025_10_13_00_04", {
+        const { data: proxyData, error: proxyError } = await supabase.functions.invoke("image-proxy", {
           body: { imageUrl },
         });
 
@@ -143,15 +142,75 @@ export const generatePDF = async (data: PDFData) => {
         });
 
         const imgData = canvas.toDataURL("image/png");
-        pdf.addImage(imgData, "PNG", 20, yPosition, 56, 56);
+        pdf.addImage(imgData, "PNG", x, y, width, height);
         console.log("Image added to PDF successfully");
       } else {
         console.log("Image not loaded properly");
       }
 
       document.body.removeChild(tempDiv);
+      return true;
     } catch (error) {
       console.error("Could not add image to PDF:", error);
+      return false;
+    }
+  };
+
+  // Add mockup or product image if available
+  const imageUrl = item.mockup_url || item.product.image_url;
+
+  if (imageUrl) {
+    await addImageToPDF(imageUrl, 20, yPosition, 56, 56);
+  }
+
+  // Add selected product angle views if available
+  if (data.selectedViews && data.selectedViews.length > 0) {
+    const productId = item.product.id;
+    const viewUrls: Record<string, string> = {
+      front: `https://images.nwgmedia.com/preview/377113/${productId}_Miami_PRO_Roundneck_Front.jpg`,
+      right: `https://images.nwgmedia.com/preview/386550/${productId}_MiamiPRORoundneck_grey_Right.jpg`,
+      back: `https://images.nwgmedia.com/preview/386560/${productId}_MiamiPRORoundneck_grey_Back.jpg`,
+      left: `https://images.nwgmedia.com/preview/386562/${productId}_MiamiPRORoundneck_grey_Left.jpg`
+    };
+
+    // Add a new page for product angles
+    pdf.addPage();
+    let angleYPosition = 20;
+
+    pdf.setFontSize(14);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Produktvinklar", 20, angleYPosition);
+    angleYPosition += 15;
+
+    // Display selected views in a grid
+    const angleImagesPerRow = 2;
+    const angleImageWidth = 80;
+    const angleImageHeight = 80;
+    const angleGap = 10;
+
+    for (let i = 0; i < data.selectedViews.length; i++) {
+      const view = data.selectedViews[i];
+      const url = viewUrls[view];
+      
+      if (url) {
+        const col = i % angleImagesPerRow;
+        const row = Math.floor(i / angleImagesPerRow);
+        const x = 20 + col * (angleImageWidth + angleGap);
+        const y = angleYPosition + row * (angleImageHeight + angleGap + 10);
+
+        await addImageToPDF(url, x, y, angleImageWidth, angleImageHeight);
+
+        // Add label below image
+        pdf.setFontSize(9);
+        pdf.setFont("helvetica", "normal");
+        const labels: Record<string, string> = {
+          front: "Framsida",
+          right: "Höger sida",
+          back: "Baksida",
+          left: "Vänster sida"
+        };
+        pdf.text(labels[view] || view, x + angleImageWidth / 2, y + angleImageHeight + 5, { align: "center" });
+      }
     }
   }
 
