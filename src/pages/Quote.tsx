@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { generatePDF } from "@/utils/pdfGenerator";
 import { Product } from "@/hooks/useProducts";
 import kostaNadaProfilLogo from "@/assets/kosta-nada-profil-logo.png";
+import { generateProductViews, validateProductViews } from "@/utils/productImageUtils";
 
 const Quote = () => {
   const [searchParams] = useSearchParams();
@@ -87,30 +88,9 @@ const Quote = () => {
   useEffect(() => {
     if (!product) return;
 
-    const baseId = product.id?.split("-")[0] || product.id;
-    const colorCode = product.id?.split("-")[1] || "91";
-    const cleanName = product.name.replace(/\s+/g, "_");
-
-    const allViews: Record<string, string> = {
-      front: `https://images.nwgmedia.com/preview/${baseId}/${baseId}-${colorCode}_${cleanName}_Front.jpg`,
-      right: `https://images.nwgmedia.com/preview/${baseId}/${baseId}-${colorCode}_${cleanName}_Right.jpg`,
-      back: `https://images.nwgmedia.com/preview/${baseId}/${baseId}-${colorCode}_${cleanName}_Back.jpg`,
-      left: `https://images.nwgmedia.com/preview/${baseId}/${baseId}-${colorCode}_${cleanName}_Left.jpg`,
-    };
-
-    // ✅ Filtrera bort bilder som inte existerar
     const checkImages = async () => {
-      const checked: Record<string, string> = {};
-      await Promise.all(
-        Object.entries(allViews).map(async ([key, url]) => {
-          try {
-            const res = await fetch(url, { method: "HEAD" });
-            if (res.ok) checked[key] = url;
-          } catch {
-            console.warn(`Bild saknas för ${key}`);
-          }
-        }),
-      );
+      const allViews = generateProductViews(product);
+      const checked = await validateProductViews(allViews);
       setValidViews(checked);
     };
 
