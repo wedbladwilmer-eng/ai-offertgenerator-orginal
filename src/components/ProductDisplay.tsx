@@ -52,7 +52,7 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
 
       {/* Bildsektionen */}
       <div
-        className="relative w-full select-none"
+        className="w-full select-none"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -66,27 +66,27 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
         ) : (
           <p className="text-gray-500 italic">Ingen bild tillgänglig</p>
         )}
-
-        {/* Navigeringspilar ovanpå bilden */}
-        {hasMultiple && (
-          <>
-            <button
-              onClick={handlePrev}
-              aria-label="Föregående färg"
-              className="absolute left-4 top-1/2 -translate-y-1/2 bg-red-600 text-white hover:bg-red-700 rounded-full p-3 shadow-lg z-[999] transition-all hover:scale-110"
-            >
-              ◀
-            </button>
-            <button
-              onClick={handleNext}
-              aria-label="Nästa färg"
-              className="absolute right-4 top-1/2 -translate-y-1/2 bg-red-600 text-white hover:bg-red-700 rounded-full p-3 shadow-lg z-[999] transition-all hover:scale-110"
-            >
-              ▶
-            </button>
-          </>
-        )}
       </div>
+
+      {/* Navigeringspilar under bilden */}
+      {hasMultiple && (
+        <div className="flex justify-center gap-6 mt-4">
+          <button
+            onClick={handlePrev}
+            aria-label="Föregående färg"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-3 shadow-lg transition-all hover:scale-110"
+          >
+            ◀
+          </button>
+          <button
+            onClick={handleNext}
+            aria-label="Nästa färg"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-3 shadow-lg transition-all hover:scale-110"
+          >
+            ▶
+          </button>
+        </div>
+      )}
 
       {/* Info under bilden */}
       <div className="mt-4">
