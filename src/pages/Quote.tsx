@@ -53,9 +53,6 @@ const Quote = () => {
 
   const productId = searchParams.get("productId");
   const mockupParam = searchParams.get("mockup");
-  const colorCodeParam = searchParams.get("colorCode");
-  const folderIdParam = searchParams.get("folderId");
-  const imageUrlParam = searchParams.get("imageUrl");
 
   useEffect(() => {
     if (productId) fetchProduct();
@@ -91,12 +88,6 @@ const Quote = () => {
         setProduct(null);
         return;
       }
-      
-      // Uppdatera med färgkod och folder_id från URL-parametrar
-      if (colorCodeParam) productData.colorCode = colorCodeParam;
-      if (folderIdParam) productData.folder_id = folderIdParam;
-      if (imageUrlParam) productData.image_url = decodeURIComponent(imageUrlParam);
-      
       setProduct(productData);
     } catch {
       toast({
@@ -110,9 +101,7 @@ const Quote = () => {
   };
 
   const toggleView = (view: string) => {
-    setSelectedViews((prev) => 
-      prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]
-    );
+    setSelectedViews((prev) => (prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]));
   };
 
   if (isLoading || !product) {
@@ -164,18 +153,7 @@ const Quote = () => {
   // 🧠 Skapa dynamiska bildlänkar utifrån huvudbilden
   const generateAngleImages = (baseUrl: string) => {
     if (!baseUrl) return [];
-    let cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
-    
-    // Byt färgkod om den finns i URL-parametrarna
-    if (colorCodeParam) {
-      cleanBase = cleanBase.replace(/[_-]\d{2,3}[_-]/, `_${colorCodeParam}_`);
-    }
-    
-    // Byt folder_id om den finns i URL-parametrarna
-    if (folderIdParam) {
-      cleanBase = cleanBase.replace(/\/\d{5,6}\//, `/${folderIdParam}/`);
-    }
-    
+    const cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
     return [
       { label: "front", short: `${cleanBase}_F.jpg`, long: `${cleanBase}_Front.jpg` },
       { label: "right", short: `${cleanBase}_R.jpg`, long: `${cleanBase}_Right.jpg` },
@@ -261,7 +239,26 @@ const Quote = () => {
                   {/* Huvudbild */}
                   <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
                     <img
-                      src={mockupUrl || product.image_url || "/placeholder.svg"}
+                      src={(function () {
+                        // Starta från basbilden som kom från produktdata eller mockup
+                        let base = mockupUrl || product.image_url || "/placeholder.svg";
+
+                        // Ta bort eventuell vinkel-suffix (_F, _Front, etc.)
+                        base = base.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
+
+                        // 🟦 Om användaren valt färgkod, byt ut den i bildadressen
+                        if (colorCodeParam) {
+                          base = base.replace(/[_-]\d{2,3}[_-]/, `_${colorCodeParam}_`);
+                        }
+
+                        // 🟩 Om användaren valt folder_id, byt ut den i bildadressen
+                        if (folderIdParam) {
+                          base = base.replace(/\/\d{5,6}\//, `/${folderIdParam}/`);
+                        }
+
+                        // Lägg till prefix för frontbild som standardvy
+                        return `${base}_Front.jpg`;
+                      })()}
                       alt={product.name}
                       className="max-h-[400px] w-auto object-contain rounded-sm border border-border"
                     />
@@ -270,13 +267,15 @@ const Quote = () => {
                   {/* Fyra vinklade bilder */}
                   <div>
                     <h4 className="font-semibold mb-2">🖼️ Produktbilder (vinklar)</h4>
-                    <p className="text-xs text-muted-foreground mb-3">Klicka för att välja vilka vinklar som ska ingå i offerten</p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Klicka för att välja vilka vinklar som ska ingå i offerten
+                    </p>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       {["Front", "Right", "Back", "Left"].map((view) => (
-                        <ProductImageView 
-                          key={view} 
-                          view={view} 
-                          baseImageUrl={product.image_url || ""} 
+                        <ProductImageView
+                          key={view}
+                          view={view}
+                          baseImageUrl={product.image_url || ""}
                           selected={selectedViews.includes(view)}
                           onToggle={() => toggleView(view)}
                         />
