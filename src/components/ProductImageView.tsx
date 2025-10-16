@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from "lucide-react";
 
 interface ProductImageViewProps {
@@ -12,8 +12,37 @@ export const ProductImageView: React.FC<ProductImageViewProps> = ({ view, baseIm
   const shortUrl = `${cleanBase}_${view[0].toUpperCase()}.jpg`;
   const longUrl = `${cleanBase}_${view}.jpg`;
 
-  const [src, setSrc] = useState(shortUrl);
+  const candidates = useMemo(() => {
+    const folderMatch = cleanBase.match(/^(https?:\/\/[^/]+\/preview)\/(\d+)\/(.+)$/);
+    // Default: same folder, short then long
+    let urls: string[] = [shortUrl, longUrl];
+
+    if (folderMatch) {
+      const [, previewRoot, folderIdStr, fileBase] = folderMatch;
+      const baseId = parseInt(folderIdStr, 10);
+      if (!isNaN(baseId)) {
+        const folderCandidates = [baseId, baseId - 1, baseId + 1, baseId - 2, baseId + 2];
+        urls = [];
+        for (const id of folderCandidates) {
+          urls.push(`${previewRoot}/${id}/${fileBase}_${view[0].toUpperCase()}.jpg`);
+          urls.push(`${previewRoot}/${id}/${fileBase}_${view}.jpg`);
+        }
+      }
+    }
+
+    // De-duplicate while preserving order
+    return Array.from(new Set(urls));
+  }, [cleanBase, view, shortUrl, longUrl]);
+
+  const [idx, setIdx] = useState(0);
+  const [src, setSrc] = useState(candidates[0]);
   const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setIdx(0);
+    setSrc(candidates[0]);
+    setHasError(false);
+  }, [candidates]);
 
   const iconMap = {
     Front: ArrowUp,
@@ -32,9 +61,10 @@ export const ProductImageView: React.FC<ProductImageViewProps> = ({ view, baseIm
           alt={`Produktvy ${view}`}
           className="w-full h-full object-contain"
           onError={() => {
-            // Fallback from short (F) to long (Front) variant
-            if (src !== longUrl) {
-              setSrc(longUrl);
+            const next = idx + 1;
+            if (next < candidates.length) {
+              setIdx(next);
+              setSrc(candidates[next]);
             } else {
               setHasError(true);
             }
