@@ -134,21 +134,13 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
       {/* Offertknapp */}
       <Button
         onClick={() => {
-          const selectedVariation = variations[currentIndex];
-          const selectedColorCode = selectedVariation?.colorCode || product.colorCode || "";
-          const selectedFolderId = selectedVariation?.folder_id || product.folder_id || "";
-          const selectedImageUrl = selectedVariation?.image_url || product.image_url || "";
-
-          console.log("🧭 Navigating to quote with:", {
-            productId: product.id,
-            colorCode: selectedColorCode,
-            folderId: selectedFolderId,
-            imageUrl: selectedImageUrl,
-          });
+          const selectedColorCode = currentVariation?.colorCode || product.colorCode || "";
+          const selectedFolderId = currentVariation?.folder_id || product.folder_id || "";
+          const imageUrl = currentVariation?.image_url || product.image_url || "";
 
           navigate(
             `/quote?productId=${product.id}&colorCode=${selectedColorCode}&folderId=${selectedFolderId}&imageUrl=${encodeURIComponent(
-              selectedImageUrl,
+              imageUrl,
             )}`,
           );
         }}
