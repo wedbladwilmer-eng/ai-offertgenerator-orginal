@@ -166,34 +166,8 @@ export const generatePDF = async (data: PDFData) => {
   // Always add product angle views in 2x2 grid
   const baseImageUrl = decodeURIComponent(imageUrl || "");
   
-  // Extract folder_id
-  let folderId = "";
-  const folderMatch = baseImageUrl.match(/\/preview\/(\d{5,6})\//);
-  if (folderMatch) folderId = folderMatch[1];
-  
-  // Extract colorCode
-  let colorCode = "";
-  const colorMatch = baseImageUrl.match(/[_-](\d{2,3})[_-]/);
-  if (colorMatch) colorCode = colorMatch[1];
-  
-  // Extract slug
-  let slug = "Produkt";
-  const underscoreMatch = baseImageUrl.match(/_\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
-  if (underscoreMatch) {
-    slug = underscoreMatch[1];
-  } else {
-    const dashMatch = baseImageUrl.match(/-\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
-    if (dashMatch) {
-      slug = dashMatch[1];
-    }
-  }
-  
-  // Determine format (dash vs underscore)
-  const article = item.product.id || "";
-  const usesDash = article.includes("-");
-  const basePattern = usesDash
-    ? `https://images.nwgmedia.com/preview/${folderId}/${article}-${colorCode}_${slug}`
-    : `https://images.nwgmedia.com/preview/${folderId}/${article}_${colorCode}_${slug}`;
+  // Remove any existing suffix from the base URL (same as Quote page logic)
+  const cleanBase = baseImageUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
 
   // Add a new page for product angles
   pdf.addPage();
@@ -214,8 +188,9 @@ export const generatePDF = async (data: PDFData) => {
 
   // Render each view in its fixed position
   for (const pos of positions) {
-    const shortUrl = `${basePattern}_${pos.view[0].toUpperCase()}.jpg`;
-    const longUrl = `${basePattern}_${pos.view}.jpg`;
+    // Build URLs using clean base (same as Quote page)
+    const shortUrl = `${cleanBase}_${pos.view[0].toUpperCase()}.jpg`;
+    const longUrl = `${cleanBase}_${pos.view}.jpg`;
     
     console.log(`Attempting to load ${pos.view}:`, shortUrl);
 

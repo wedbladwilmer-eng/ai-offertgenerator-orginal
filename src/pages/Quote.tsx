@@ -45,6 +45,16 @@ const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }>
     }
   };
 
+  const getLabelInSwedish = (view: string) => {
+    switch (view) {
+      case "Front": return "Framsida";
+      case "Right": return "Höger sida";
+      case "Back": return "Baksida";
+      case "Left": return "Vänster sida";
+      default: return view;
+    }
+  };
+
   return (
     <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden border">
       {!hasError ? (
@@ -52,15 +62,19 @@ const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }>
           src={src}
           alt={label}
           className="w-full h-full object-contain"
+          crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
           onError={handleError}
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 p-2 text-center">
-          Ingen bild
-        </div>
+        <img
+          src="/placeholder.svg"
+          alt={label}
+          className="w-full h-full object-contain p-4 opacity-50"
+        />
       )}
       <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs py-1 text-center">
-        {label}
+        {getLabelInSwedish(label)}
       </div>
     </div>
   );
@@ -147,46 +161,25 @@ const Quote: React.FC = () => {
     );
   }
 
-  // Extract slug from imageUrl
-  const baseImage = decodeURIComponent(imageUrlParam || product.image_url || "");
-  let slug = product.slug_name || "Produkt";
-
-  // Try underscore format first: /{article}_{color}_{slug}_{View}.jpg
-  const underscoreMatch = baseImage.match(/_\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
-  if (underscoreMatch) {
-    slug = underscoreMatch[1];
-  } else {
-    // Try dash format: /{article}-{color}_{slug}_{View}.jpg
-    const dashMatch = baseImage.match(/-\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
-    if (dashMatch) {
-      slug = dashMatch[1];
-    }
-  }
-
-  // Build angle images based on selected views
+  // Get the base image URL from params
+  const mainImage = decodeURIComponent(imageUrlParam || product.image_url || "");
+  
+  // Build angle images using the same logic as ProductImageView
   const buildAngleImages = () => {
-    const article = productId || "";
-    const color = product.colorCode || "";
-    const folder = product.folder_id || "";
-
-    if (!article || !color || !folder) return [];
-
-    // Determine format (dash vs underscore)
-    const usesDash = article.includes("-");
-    const basePattern = usesDash
-      ? `https://images.nwgmedia.com/preview/${folder}/${article}-${color}_${slug}`
-      : `https://images.nwgmedia.com/preview/${folder}/${article}_${color}_${slug}`;
-
-    // Only build images for selected views
+    if (!mainImage) return [];
+    
+    // Remove any existing suffix from the base URL (same as ProductImageView)
+    const cleanBase = mainImage.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
+    
+    // Build URLs for each selected view
     return selectedViews.map((view) => ({
       label: view,
-      short: `${basePattern}_${view[0].toUpperCase()}.jpg`,
-      long: `${basePattern}_${view}.jpg`,
+      short: `${cleanBase}_${view[0].toUpperCase()}.jpg`,
+      long: `${cleanBase}_${view}.jpg`,
     }));
   };
 
   const angleImages = buildAngleImages();
-  const mainImage = baseImage || product.image_url || "";
 
   const handleConfirmColor = () => {
     setIsColorConfirmed(true);
