@@ -134,22 +134,21 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
       {/* Offertknapp */}
       <Button
         onClick={() => {
-          const imageUrl = currentImage || "";
-          
-          // Extrahera colorCode från URL:en
-          // Format: https://images.nwgmedia.com/preview/96495/032101_99_HotpantsKids_F.jpg
-          // där 96495 = folder_id och 99 = colorCode
-          const urlParts = imageUrl.split("/");
-          const folderId = urlParts.length >= 5 ? urlParts[4] : "";
-          const fileName = urlParts[urlParts.length - 1] || "";
-          
-          // Extrahera colorCode från filnamnet (032101_99_HotpantsKids_F.jpg -> 99)
-          const fileNameMatch = fileName.match(/^\d+_(\d+)_/);
-          const colorCode = fileNameMatch ? fileNameMatch[1] : "";
+          const selectedVariation = variations[currentIndex];
+          const selectedColorCode = selectedVariation?.colorCode || product.colorCode || "";
+          const selectedFolderId = selectedVariation?.folder_id || product.folder_id || "";
+          const selectedImageUrl = selectedVariation?.image_url || product.image_url || "";
+
+          console.log("🧭 Navigating to quote with:", {
+            productId: product.id,
+            colorCode: selectedColorCode,
+            folderId: selectedFolderId,
+            imageUrl: selectedImageUrl,
+          });
 
           navigate(
-            `/quote?productId=${product.id}&colorCode=${colorCode}&folderId=${folderId}&imageUrl=${encodeURIComponent(
-              imageUrl,
+            `/quote?productId=${product.id}&colorCode=${selectedColorCode}&folderId=${selectedFolderId}&imageUrl=${encodeURIComponent(
+              selectedImageUrl,
             )}`,
           );
         }}
