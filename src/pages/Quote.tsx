@@ -49,7 +49,7 @@ const Quote = () => {
   const [margin, setMargin] = useState("2");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedViews, setSelectedViews] = useState<string[]>(["front", "right", "back", "left"]);
+  const [selectedViews, setSelectedViews] = useState<string[]>(["Front", "Right", "Back", "Left"]);
 
   const productId = searchParams.get("productId");
   const mockupParam = searchParams.get("mockup");
@@ -100,8 +100,11 @@ const Quote = () => {
     }
   };
 
-  const toggleView = (view: string) =>
-    setSelectedViews((prev) => (prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]));
+  const toggleView = (view: string) => {
+    setSelectedViews((prev) => 
+      prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]
+    );
+  };
 
   if (isLoading || !product) {
     return (
@@ -247,9 +250,16 @@ const Quote = () => {
                   {/* Fyra vinklade bilder */}
                   <div>
                     <h4 className="font-semibold mb-2">🖼️ Produktbilder (vinklar)</h4>
+                    <p className="text-xs text-muted-foreground mb-3">Klicka för att välja vilka vinklar som ska ingå i offerten</p>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       {["Front", "Right", "Back", "Left"].map((view) => (
-                        <ProductImageView key={view} view={view} baseImageUrl={product.image_url || ""} />
+                        <ProductImageView 
+                          key={view} 
+                          view={view} 
+                          baseImageUrl={product.image_url || ""} 
+                          selected={selectedViews.includes(view)}
+                          onToggle={() => toggleView(view)}
+                        />
                       ))}
                     </div>
                   </div>
