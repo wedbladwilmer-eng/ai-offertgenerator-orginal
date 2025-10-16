@@ -63,21 +63,41 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
     <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg text-center overflow-visible relative">
       <h2 className="text-2xl font-semibold mb-4">{product.name}</h2>
 
-      {/* Bildsektionen */}
-      <div
-        className="w-full select-none"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {currentImage ? (
-          <img
-            src={currentImage}
-            alt={product.name}
-            className="w-full h-auto max-h-[420px] object-contain rounded-lg shadow"
-          />
-        ) : (
-          <p className="text-gray-500 italic">Ingen bild tillgänglig</p>
+      {/* Bildsektionen - huvudbild till vänster, 4 vinklar till höger */}
+      <div className="flex gap-4">
+        {/* Huvudbild */}
+        <div
+          className="flex-1 select-none"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {currentImage ? (
+            <img
+              src={currentImage}
+              alt={product.name}
+              className="w-full h-auto max-h-[420px] object-contain rounded-lg shadow"
+            />
+          ) : (
+            <p className="text-gray-500 italic">Ingen bild tillgänglig</p>
+          )}
+        </div>
+
+        {/* 4 vinklar i 2x2 grid */}
+        {product.image_url && (
+          <div className="w-[200px] flex-shrink-0">
+            <div className="grid grid-cols-2 gap-2">
+              {["Front", "Right", "Back", "Left"].map((view) => (
+                <ProductImageView
+                  key={view}
+                  view={view}
+                  baseImageUrl={product.image_url || ""}
+                  selected={selectedViews.includes(view)}
+                  onToggle={() => toggleView(view)}
+                />
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
@@ -114,23 +134,6 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
         {product.price_ex_vat && <p className="mt-2 font-semibold">{product.price_ex_vat} kr (exkl. moms)</p>}
       </div>
 
-      {/* Bildvinklar */}
-      {product.image_url && (
-        <div className="mt-6">
-          <h3 className="text-sm font-semibold mb-3">Välj bildvinklar för offerten:</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {["Front", "Right", "Back", "Left"].map((view) => (
-              <ProductImageView
-                key={view}
-                view={view}
-                baseImageUrl={product.image_url || ""}
-                selected={selectedViews.includes(view)}
-                onToggle={() => toggleView(view)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Offertknapp */}
       {onAddToQuote && (
