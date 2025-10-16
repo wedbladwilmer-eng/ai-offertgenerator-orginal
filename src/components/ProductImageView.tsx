@@ -21,25 +21,49 @@ export const ProductImageView: React.FC<ProductImageViewProps> = ({
 
   const candidates = useMemo(() => {
     const folderMatch = cleanBase.match(/^(https?:\/\/[^/]+\/preview)\/(\d+)\/(.+)$/);
-    // Default: same folder, short then long
+    // Default candidates from same folder
     let urls: string[] = [shortUrl, longUrl];
 
     if (folderMatch) {
       const [, previewRoot, folderIdStr, fileBase] = folderMatch;
       const baseId = parseInt(folderIdStr, 10);
+
       if (!isNaN(baseId)) {
-        const folderCandidates = [baseId, baseId - 1, baseId + 1, baseId - 2, baseId + 2];
+        // Detect original view from the base image url (e.g. _F.jpg or _Front.jpg)
+        const baseViewMatch = baseImageUrl.match(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
+        const baseView = baseViewMatch ? baseViewMatch[1] : null;
+
+        // If original is Front/F, prioritize known folder offsets: B:-1, L:+1, R:+2
+        const offsetMap: Record<string, number> = { Back: -1, Left: +1, Right: +2, Front: 0, B: -1, L: +1, R: +2, F: 0 };
+        const preferredOffset = baseView && baseView.toLowerCase().startsWith('f')
+          ? (offsetMap[view] ?? 0)
+          : (offsetMap[view] ?? undefined);
+        const preferredId = preferredOffset !== undefined ? baseId + preferredOffset : undefined;
+
+        const baseCandidates = [baseId, baseId - 1, baseId + 1, baseId - 2, baseId + 2, baseId - 3, baseId + 3];
+        const folderCandidates = preferredId !== undefined
+          ? [preferredId, ...baseCandidates.filter((id) => id !== preferredId)]
+          : baseCandidates;
+
+        const fileBaseVariants = Array.from(new Set([
+          fileBase,
+          fileBase.replace(/\s+/g, ''), // no spaces
+          fileBase.replace(/[ -]+/g, ''), // no spaces or hyphens
+        ]));
+
         urls = [];
         for (const id of folderCandidates) {
-          urls.push(`${previewRoot}/${id}/${fileBase}_${view[0].toUpperCase()}.jpg`);
-          urls.push(`${previewRoot}/${id}/${fileBase}_${view}.jpg`);
+          for (const baseVariant of fileBaseVariants) {
+            urls.push(`${previewRoot}/${id}/${baseVariant}_${view[0].toUpperCase()}.jpg`);
+            urls.push(`${previewRoot}/${id}/${baseVariant}_${view}.jpg`);
+          }
         }
       }
     }
 
     // De-duplicate while preserving order
     return Array.from(new Set(urls));
-  }, [cleanBase, view, shortUrl, longUrl]);
+  }, [cleanBase, view, shortUrl, longUrl, baseImageUrl]);
 
   const [idx, setIdx] = useState(0);
   const [src, setSrc] = useState(candidates[0]);
