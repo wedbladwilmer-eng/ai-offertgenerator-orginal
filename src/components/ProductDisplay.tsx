@@ -131,23 +131,6 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
         {product.price_ex_vat && <p className="mt-2 font-semibold">{product.price_ex_vat} kr (exkl. moms)</p>}
       </div>
 
-      {/* Offertknapp */}
-      <Button
-        onClick={() => {
-          const selectedColorCode = currentVariation?.colorCode || product.colorCode || "";
-          const selectedFolderId = currentVariation?.folder_id || product.folder_id || "";
-          const imageUrl = currentVariation?.image_url || product.image_url || "";
-
-          navigate(
-            `/quote?productId=${product.id}&colorCode=${selectedColorCode}&folderId=${selectedFolderId}&imageUrl=${encodeURIComponent(
-              imageUrl,
-            )}`,
-          );
-        }}
-        className="mt-5 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
-      >
-        Skapa offert
-      </Button>
     </div>
   );
 };

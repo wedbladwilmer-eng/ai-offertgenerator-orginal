@@ -206,19 +206,6 @@ const MockupPreview: React.FC<MockupPreviewProps> = ({ previewUrl, mockupUrl }) 
                 </div>
               ) : null}
             </div>
-            <div className="mt-6 text-center">
-              <Button
-                onClick={() =>
-                  navigate(
-                    `/quote?productId=${product.id}&mockup=${encodeURIComponent(previewUrl || mockupUrl || '')}`
-                  )
-                }
-                size="lg"
-                className="gap-2"
-              >
-                Skapa offert för denna produkt
-              </Button>
-            </div>
           </CardContent>
         </Card>
       )}
