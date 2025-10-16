@@ -51,6 +51,8 @@ const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }>
         <img
           src={src}
           alt={label}
+          crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
           className="w-full h-full object-contain"
           onError={handleError}
         />

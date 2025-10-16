@@ -1,5 +1,4 @@
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import type { QuoteItem } from "@/hooks/useProducts";
 
 interface PDFData {
@@ -64,30 +63,49 @@ export const generatePDF = async (data: PDFData) => {
   const baseImageUrl = item.product.image_url || "";
   const cleanBase = baseImageUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
 
+  // 🧩 Hjälpfunktion för att hämta bild via proxy
+  const getImageDataUrl = async (imageUrl: string): Promise<string | null> => {
+    try {
+      console.log("Fetching image via proxy:", imageUrl);
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke("image-proxy", {
+        body: { imageUrl }
+      });
+      
+      if (error) {
+        console.error("Proxy error:", error);
+        return null;
+      }
+      
+      if (!data?.dataUrl) {
+        console.error("No dataUrl in response");
+        return null;
+      }
+      
+      console.log("Image fetched successfully via proxy");
+      return data.dataUrl;
+    } catch (error) {
+      console.error("Failed to fetch image via proxy:", error);
+      return null;
+    }
+  };
+
   // 🧩 Hjälpfunktion för att lägga till bild eller placeholder
   const addImageToPDF = async (imageUrl: string, x: number, y: number, w: number, h: number): Promise<boolean> => {
     try {
-      const tempImg = new Image();
-      tempImg.crossOrigin = "anonymous";
-      tempImg.src = imageUrl;
-
-      await new Promise((resolve) => {
-        tempImg.onload = resolve;
-        tempImg.onerror = resolve;
-        setTimeout(resolve, 2000);
-      });
-
-      if (tempImg.complete && tempImg.naturalHeight > 0) {
-        const canvas = await html2canvas(tempImg, { backgroundColor: "#ffffff" });
-        const imgData = canvas.toDataURL("image/png");
-        pdf.addImage(imgData, "PNG", x, y, w, h);
+      const dataUrl = await getImageDataUrl(imageUrl);
+      
+      if (dataUrl) {
+        pdf.addImage(dataUrl, "PNG", x, y, w, h);
+        console.log("Image added to PDF successfully");
         return true;
       }
     } catch (error) {
-      console.warn("Image failed:", imageUrl, error);
+      console.error("Failed to add image to PDF:", error);
     }
 
     // Placeholder om bilden inte laddas
+    console.log("Drawing placeholder for failed image");
     pdf.setFillColor(245, 245, 245);
     pdf.rect(x, y, w, h, "F");
     pdf.setFontSize(10);
