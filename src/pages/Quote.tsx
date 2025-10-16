@@ -11,6 +11,7 @@ import { generatePDF } from "@/utils/pdfGenerator";
 import { ArrowLeft, Check } from "lucide-react";
 import logo from "@/assets/kosta-nada-profil-logo.png";
 import { useToast } from "@/hooks/use-toast";
+import { generateAngleImages, getViewLabelInSwedish } from "@/lib/generateAngleImages";
 
 interface Product {
   id: string;
@@ -45,16 +46,6 @@ const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }>
     }
   };
 
-  const getLabelInSwedish = (view: string) => {
-    switch (view) {
-      case "Front": return "Framsida";
-      case "Right": return "Höger sida";
-      case "Back": return "Baksida";
-      case "Left": return "Vänster sida";
-      default: return view;
-    }
-  };
-
   return (
     <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden border">
       {!hasError ? (
@@ -74,7 +65,7 @@ const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }>
         />
       )}
       <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs py-1 text-center">
-        {getLabelInSwedish(label)}
+        {getViewLabelInSwedish(label)}
       </div>
     </div>
   );
@@ -101,7 +92,7 @@ const Quote: React.FC = () => {
   const productId = searchParams.get("productId");
   const colorCodeParam = searchParams.get("colorCode");
   const folderIdParam = searchParams.get("folderId");
-  const imageUrlParam = searchParams.get("imageUrl");
+  const slugParam = searchParams.get("slug");
   const viewsParam = searchParams.get("views");
   
   // Parse selected views from URL or fallback to ["Front"]
@@ -128,7 +119,7 @@ const Quote: React.FC = () => {
         // Override with URL parameters if available
         if (colorCodeParam) productData.colorCode = colorCodeParam;
         if (folderIdParam) productData.folder_id = folderIdParam;
-        if (imageUrlParam) productData.image_url = decodeURIComponent(imageUrlParam);
+        if (slugParam) productData.slug_name = slugParam;
 
         setProduct(productData);
       } catch (err) {
@@ -139,7 +130,7 @@ const Quote: React.FC = () => {
     };
 
     fetchProduct();
-  }, [productId, colorCodeParam, folderIdParam, imageUrlParam]);
+  }, [productId, colorCodeParam, folderIdParam, slugParam]);
 
   if (loading) {
     return (
@@ -161,31 +152,29 @@ const Quote: React.FC = () => {
     );
   }
 
-  // Get the base image URL from params
-  const mainImage = decodeURIComponent(imageUrlParam || product.image_url || "");
+  // Build angle images using generateAngleImages function
+  const folderId = folderIdParam || product.folder_id || "";
+  const colorCode = colorCodeParam || product.colorCode || "";
+  const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "");
   
-  // Build angle images using the same logic as ProductImageView
-  const buildAngleImages = () => {
-    if (!mainImage) return [];
-    
-    // Remove any existing suffix from the base URL (same as ProductImageView)
-    const cleanBase = mainImage.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
-    
-    // Build URLs for each selected view
-    return selectedViews.map((view) => ({
-      label: view,
-      short: `${cleanBase}_${view[0].toUpperCase()}.jpg`,
-      long: `${cleanBase}_${view}.jpg`,
-    }));
-  };
-
-  const angleImages = buildAngleImages();
+  const angleImages = generateAngleImages(
+    folderId,
+    productId || "",
+    colorCode,
+    slug,
+    selectedViews
+  );
+  
+  // Build main image URL
+  const mainImage = angleImages.length > 0 
+    ? angleImages[0].short.replace(/_[FRLB]\.jpg$/i, "_F.jpg")
+    : product.image_url || "";
 
   const handleConfirmColor = () => {
     setIsColorConfirmed(true);
     setConfirmedData({
-      colorCode: product.colorCode || "",
-      folderId: product.folder_id || "",
+      colorCode: colorCode,
+      folderId: folderId,
       imageUrl: mainImage,
     });
   };

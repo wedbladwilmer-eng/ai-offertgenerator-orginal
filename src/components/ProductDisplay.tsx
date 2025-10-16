@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Product } from "@/hooks/useProducts";
 import { ProductImageView } from "@/components/ProductImageView";
 import { useNavigate } from "react-router-dom";
+import { generateAngleImages } from "@/lib/generateAngleImages";
 
 type ProductDisplayProps = {
   product: Product;
@@ -54,6 +55,28 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
 
   const toggleView = (view: string) => {
     setSelectedViews((prev) => (prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]));
+  };
+
+  // Extract image parameters from current image URL
+  const extractImageParams = () => {
+    const imageUrl = currentImage || product.image_url || "";
+    let folderId = product.folder_id || "";
+    let colorCode = product.colorCode || "";
+    let slug = (product.name || "").replace(/\s+/g, "");
+
+    // Extract from URL if not in product data
+    if (imageUrl) {
+      const folderMatch = imageUrl.match(/\/preview\/(\d{5,6})\//);
+      if (folderMatch) folderId = folderMatch[1];
+
+      const colorMatch = imageUrl.match(/[_-](\d{2,3})[_-]/);
+      if (colorMatch) colorCode = colorMatch[1];
+
+      const slugMatch = imageUrl.match(/\d{2,3}_([^_]+)_[FRLB]/i);
+      if (slugMatch) slug = slugMatch[1];
+    }
+
+    return { folderId, colorCode, slug };
   };
 
   return (
@@ -134,25 +157,10 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
       {/* Skapa offert button */}
       <Button
         onClick={() => {
-          const imageUrl = currentImage || product.image_url || "";
+          const { folderId, colorCode, slug } = extractImageParams();
           
-          // Extract colorCode and folderId from imageUrl
-          // Format: https://images.nwgmedia.com/preview/{folder_id}/{article}_{color}_{slug}_{view}.jpg
-          let selectedColorCode = product.colorCode || "";
-          let selectedFolderId = product.folder_id || "";
-          
-          if (imageUrl) {
-            const folderMatch = imageUrl.match(/\/preview\/(\d{5,6})\//);
-            if (folderMatch) selectedFolderId = folderMatch[1];
-            
-            const colorMatch = imageUrl.match(/[_-](\d{2,3})[_-]/);
-            if (colorMatch) selectedColorCode = colorMatch[1];
-          }
-
           navigate(
-            `/quote?productId=${product.id}&colorCode=${selectedColorCode}&folderId=${selectedFolderId}&imageUrl=${encodeURIComponent(
-              imageUrl
-            )}&views=${encodeURIComponent(JSON.stringify(selectedViews))}`
+            `/quote?productId=${product.id}&colorCode=${colorCode}&folderId=${folderId}&slug=${slug}&views=${encodeURIComponent(JSON.stringify(selectedViews))}`
           );
         }}
         className="mt-5 w-full"
