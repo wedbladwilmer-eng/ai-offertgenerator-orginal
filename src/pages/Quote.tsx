@@ -11,6 +11,7 @@ import { generatePDF } from "@/utils/pdfGenerator";
 import { ArrowLeft, Check } from "lucide-react";
 import logo from "@/assets/kosta-nada-profil-logo.png";
 import { useToast } from "@/hooks/use-toast";
+import { generateAngleImages, getViewLabelInSwedish } from "@/lib/generateAngleImages";
 
 interface Product {
   id: string;
@@ -45,16 +46,6 @@ const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }>
     }
   };
 
-  const getLabelInSwedish = (view: string) => {
-    switch (view) {
-      case "Front": return "Framsida";
-      case "Right": return "Höger sida";
-      case "Back": return "Baksida";
-      case "Left": return "Vänster sida";
-      default: return view;
-    }
-  };
-
   return (
     <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden border">
       {!hasError ? (
@@ -74,7 +65,7 @@ const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }>
         />
       )}
       <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs py-1 text-center">
-        {getLabelInSwedish(label)}
+        {getViewLabelInSwedish(label)}
       </div>
     </div>
   );
@@ -161,25 +152,17 @@ const Quote: React.FC = () => {
     );
   }
 
-  // Get the base image URL from params
+  // Get the main image URL from params
   const mainImage = decodeURIComponent(imageUrlParam || product.image_url || "");
   
-  // Build angle images using the same logic as ProductImageView
-  const buildAngleImages = () => {
-    if (!mainImage) return [];
-    
-    // Remove any existing suffix from the base URL (same as ProductImageView)
-    const cleanBase = mainImage.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
-    
-    // Build URLs for each selected view
-    return selectedViews.map((view) => ({
-      label: view,
-      short: `${cleanBase}_${view[0].toUpperCase()}.jpg`,
-      long: `${cleanBase}_${view}.jpg`,
-    }));
-  };
-
-  const angleImages = buildAngleImages();
+  // Extract parameters for building angle images
+  const folderId = folderIdParam || "";
+  const articleNumber = productId || "";
+  const colorCode = colorCodeParam || "";
+  const slug = product?.name ? product.name.replace(/\s+/g, "") : "";
+  
+  // Build angle images using the centralized function
+  const angleImages = generateAngleImages(folderId, articleNumber, colorCode, slug, selectedViews);
 
   const handleConfirmColor = () => {
     setIsColorConfirmed(true);
@@ -213,6 +196,9 @@ const Quote: React.FC = () => {
           quantity,
           selectedViews: selectedViews,
           mockup_url: confirmedData?.imageUrl || mainImage,
+          folderId: folderId,
+          colorCode: colorCode,
+          slug: slug,
         },
       ],
       total,
