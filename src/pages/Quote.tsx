@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { generatePDF } from "@/utils/pdfGenerator";
 import { Product } from "@/hooks/useProducts";
 import kostaNadaProfilLogo from "@/assets/kosta-nada-profil-logo.png";
+import { ProductImageView } from "@/components/ProductImageView";
 
 const AngleImage = ({ shortUrl, longUrl, label }: { shortUrl: string; longUrl: string; label: string }) => {
   const [src, setSrc] = useState(shortUrl);
@@ -247,8 +248,8 @@ const Quote = () => {
                   <div>
                     <h4 className="font-semibold mb-2">🖼️ Produktbilder (vinklar)</h4>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {angleImages.map(({ label, short, long }) => (
-                        <AngleImage key={label} shortUrl={short} longUrl={long} label={label} />
+                      {["Front", "Right", "Back", "Left"].map((view) => (
+                        <ProductImageView key={view} view={view} baseImageUrl={product.image_url || ""} />
                       ))}
                     </div>
                   </div>
