@@ -1,14 +1,9 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { QuoteItem } from "@/hooks/useProducts";
-import { generateAngleImages } from "@/lib/generateAngleImages";
 
 interface PDFData {
-  quote: (QuoteItem & {
-    folderId?: string;
-    colorCode?: string;
-    slug?: string;
-  })[];
+  quote: QuoteItem[];
   companyName: string;
   customerName: string;
   total: number;
@@ -169,19 +164,10 @@ export const generatePDF = async (data: PDFData) => {
   }
 
   // Always add product angle views in 2x2 grid
-  const folderId = item.folderId || "";
-  const articleNumber = item.product.id || "";
-  const colorCode = item.colorCode || "";
-  const slug = item.slug || "";
+  const baseImageUrl = decodeURIComponent(imageUrl || "");
   
-  // Use the centralized function to generate angle images
-  const angleImages = generateAngleImages(
-    folderId,
-    articleNumber,
-    colorCode,
-    slug,
-    item.selectedViews || ["Front", "Right", "Back", "Left"]
-  );
+  // Remove any existing suffix from the base URL (same as Quote page logic)
+  const cleanBase = baseImageUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
 
   // Add a new page for product angles
   pdf.addPage();
@@ -191,32 +177,33 @@ export const generatePDF = async (data: PDFData) => {
   pdf.text("Produktvinklar", 20, 20);
 
   // Define fixed positions for 2x2 grid
-  const positionMap: { [key: string]: { x: number; y: number; label: string } } = {
-    Front: { x: 20, y: 35, label: "Framsida" },
-    Right: { x: 115, y: 35, label: "Höger sida" },
-    Back: { x: 20, y: 125, label: "Baksida" },
-    Left: { x: 115, y: 125, label: "Vänster sida" }
-  };
+  const positions = [
+    { view: "Front", x: 20, y: 35, label: "Framsida" },
+    { view: "Right", x: 115, y: 35, label: "Höger sida" },
+    { view: "Back", x: 20, y: 125, label: "Baksida" },
+    { view: "Left", x: 115, y: 125, label: "Vänster sida" }
+  ];
 
   const imageSize = 80;
 
-  // Render each selected angle image in its fixed position
-  for (const img of angleImages) {
-    const pos = positionMap[img.label];
-    if (!pos) continue;
+  // Render each view in its fixed position
+  for (const pos of positions) {
+    // Build URLs using clean base (same as Quote page)
+    const shortUrl = `${cleanBase}_${pos.view[0].toUpperCase()}.jpg`;
+    const longUrl = `${cleanBase}_${pos.view}.jpg`;
     
-    console.log(`Attempting to load ${img.label}:`, img.short);
+    console.log(`Attempting to load ${pos.view}:`, shortUrl);
 
     // Try to add image, if both fail, show placeholder
-    let imageAdded = await addImageToPDF(img.short, pos.x, pos.y, imageSize, imageSize);
+    let imageAdded = await addImageToPDF(shortUrl, pos.x, pos.y, imageSize, imageSize);
     if (!imageAdded) {
-      console.log(`Short URL failed, trying long URL:`, img.long);
-      imageAdded = await addImageToPDF(img.long, pos.x, pos.y, imageSize, imageSize);
+      console.log(`Short URL failed, trying long URL:`, longUrl);
+      imageAdded = await addImageToPDF(longUrl, pos.x, pos.y, imageSize, imageSize);
     }
 
     // If image still not added, draw placeholder
     if (!imageAdded) {
-      console.log(`Both URLs failed for ${img.label}, drawing placeholder`);
+      console.log(`Both URLs failed for ${pos.view}, drawing placeholder`);
       
       // Draw light gray rectangle
       pdf.setFillColor(240, 240, 240);

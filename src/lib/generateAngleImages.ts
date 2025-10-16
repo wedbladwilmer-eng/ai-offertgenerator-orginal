@@ -1,8 +1,6 @@
 /**
  * Bygger dynamiska bild-URL:er (Front, Right, Back, Left)
- * för New Wave Group-produkter.
- * 
- * URL-mönster: https://images.nwgmedia.com/preview/{folder_id}/{article_number}_{color_code}_{slug}_{view}.jpg
+ * för New Wave Group-produkter, baserat på en baslänk eller parametrar.
  *
  * Denna funktion används både i ProductDisplay.tsx och Quote.tsx
  * för att garantera att samma logik används överallt.
@@ -16,44 +14,25 @@ export interface AngleImage {
 
 /**
  * Exempel på indata:
- * folderId = "96495"
- * articleNumber = "032101"
- * colorCode = "99"
- * slug = "HotpantsKids"
+ * baseUrl = "https://images.nwgmedia.com/preview/96495/032101_99_HotpantsKids_F.jpg"
  * selectedViews = ["Front", "Right"]
  */
 export const generateAngleImages = (
-  folderId: string,
-  articleNumber: string,
-  colorCode: string,
-  slug: string,
+  baseUrl: string,
   selectedViews: string[] = ["Front", "Right", "Back", "Left"],
 ): AngleImage[] => {
-  if (!folderId || !articleNumber || !colorCode || !slug) return [];
+  if (!baseUrl) return [];
 
-  // Bygg bas-URL enligt New Wave Group-mönster
-  const base = `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slug}`;
+  // Rensa bort vy-suffix (_F.jpg, _Front.jpg, etc.)
+  const cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
 
   const allViews: AngleImage[] = [
-    { label: "Front", short: `${base}_F.jpg`, long: `${base}_Front.jpg` },
-    { label: "Right", short: `${base}_R.jpg`, long: `${base}_Right.jpg` },
-    { label: "Back", short: `${base}_B.jpg`, long: `${base}_Back.jpg` },
-    { label: "Left", short: `${base}_L.jpg`, long: `${base}_Left.jpg` },
+    { label: "Front", short: `${cleanBase}_F.jpg`, long: `${cleanBase}_Front.jpg` },
+    { label: "Right", short: `${cleanBase}_R.jpg`, long: `${cleanBase}_Right.jpg` },
+    { label: "Back", short: `${cleanBase}_B.jpg`, long: `${cleanBase}_Back.jpg` },
+    { label: "Left", short: `${cleanBase}_L.jpg`, long: `${cleanBase}_Left.jpg` },
   ];
 
-  // Filtrera endast de vinklar användaren valde
+  // Filtrera endast de vinklar användaren valde (om selectedViews finns)
   return allViews.filter((v) => selectedViews.includes(v.label));
-};
-
-/**
- * Översätter engelska vynamn till svenska
- */
-export const getViewLabelInSwedish = (view: string): string => {
-  switch (view) {
-    case "Front": return "Framsida";
-    case "Right": return "Höger sida";
-    case "Back": return "Baksida";
-    case "Left": return "Vänster sida";
-    default: return view;
-  }
 };

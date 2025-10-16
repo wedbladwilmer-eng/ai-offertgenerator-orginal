@@ -1,73 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Product } from "@/hooks/useProducts";
+import { ProductImageView } from "@/components/ProductImageView";
 import { useNavigate } from "react-router-dom";
-import { generateAngleImages, getViewLabelInSwedish } from "@/lib/generateAngleImages";
 
 type ProductDisplayProps = {
   product: Product;
   onAddToQuote?: (product: Product, quantity: number, selectedViews?: string[]) => void;
-};
-
-// Separate component for angle image view
-const AngleImageView: React.FC<{
-  short: string;
-  long: string;
-  label: string;
-  isSelected: boolean;
-  onToggle: () => void;
-}> = ({ short, long, label, isSelected, onToggle }) => {
-  const [src, setSrc] = useState(short);
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    setSrc(short);
-    setHasError(false);
-  }, [short]);
-
-  return (
-    <div
-      onClick={onToggle}
-      className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-        isSelected ? "border-primary ring-2 ring-primary/20" : "border-gray-200 hover:border-gray-300"
-      }`}
-    >
-      <div className="aspect-square bg-gray-50">
-        {!hasError ? (
-          <img
-            src={src}
-            alt={label}
-            className="w-full h-full object-contain"
-            crossOrigin="anonymous"
-            referrerPolicy="no-referrer"
-            onError={() => {
-              if (src === short) {
-                setSrc(long);
-              } else {
-                setHasError(true);
-              }
-            }}
-          />
-        ) : (
-          <img
-            src="/placeholder.svg"
-            alt={label}
-            className="w-full h-full object-contain p-4 opacity-30"
-          />
-        )}
-      </div>
-      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs py-1 text-center">
-        {getViewLabelInSwedish(label)}
-      </div>
-      {isSelected && (
-        <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-1">
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-        </div>
-      )}
-    </div>
-  );
 };
 
 const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }) => {
@@ -117,32 +56,6 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
     setSelectedViews((prev) => (prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]));
   };
 
-  // Extract folder_id, article_number, color_code, slug from current variation
-  const extractImageParams = () => {
-    const imageUrl = currentImage || product.image_url || "";
-    
-    // Extract folder_id from URL
-    let folderId = "";
-    const folderMatch = imageUrl.match(/\/preview\/(\d{5,6})\//);
-    if (folderMatch) folderId = folderMatch[1];
-    
-    // Extract color_code from URL
-    let colorCode = "";
-    const colorMatch = imageUrl.match(/[_-](\d{2,3})[_-]/);
-    if (colorMatch) colorCode = colorMatch[1];
-    
-    // Article number is the product ID
-    const articleNumber = product.id;
-    
-    // Slug from product name (remove spaces)
-    const slug = (product.name || "").replace(/\s+/g, "");
-    
-    return { folderId, articleNumber, colorCode, slug };
-  };
-
-  const { folderId, articleNumber, colorCode, slug } = extractImageParams();
-  const angleImages = generateAngleImages(folderId, articleNumber, colorCode, slug, ["Front", "Right", "Back", "Left"]);
-
   return (
     <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg text-center overflow-visible relative">
       <h2 className="text-2xl font-semibold mb-4">{product.name}</h2>
@@ -168,17 +81,16 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
         </div>
 
         {/* 4 vinklar i 2x2 grid */}
-        {angleImages.length > 0 && (
+        {product.image_url && (
           <div className="w-[200px] flex-shrink-0">
             <div className="grid grid-cols-2 gap-2">
-              {angleImages.map((img) => (
-                <AngleImageView
-                  key={img.label}
-                  short={img.short}
-                  long={img.long}
-                  label={img.label}
-                  isSelected={selectedViews.includes(img.label)}
-                  onToggle={() => toggleView(img.label)}
+              {["Front", "Right", "Back", "Left"].map((view) => (
+                <ProductImageView
+                  key={view}
+                  view={view}
+                  baseImageUrl={currentImage ?? product.image_url ?? ""}
+                  selected={selectedViews.includes(view)}
+                  onToggle={() => toggleView(view)}
                 />
               ))}
             </div>
@@ -222,9 +134,24 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
       {/* Skapa offert button */}
       <Button
         onClick={() => {
+          const imageUrl = currentImage || product.image_url || "";
+          
+          // Extract colorCode and folderId from imageUrl
+          // Format: https://images.nwgmedia.com/preview/{folder_id}/{article}_{color}_{slug}_{view}.jpg
+          let selectedColorCode = product.colorCode || "";
+          let selectedFolderId = product.folder_id || "";
+          
+          if (imageUrl) {
+            const folderMatch = imageUrl.match(/\/preview\/(\d{5,6})\//);
+            if (folderMatch) selectedFolderId = folderMatch[1];
+            
+            const colorMatch = imageUrl.match(/[_-](\d{2,3})[_-]/);
+            if (colorMatch) selectedColorCode = colorMatch[1];
+          }
+
           navigate(
-            `/quote?productId=${articleNumber}&colorCode=${colorCode}&folderId=${folderId}&imageUrl=${encodeURIComponent(
-              currentImage || product.image_url || ""
+            `/quote?productId=${product.id}&colorCode=${selectedColorCode}&folderId=${selectedFolderId}&imageUrl=${encodeURIComponent(
+              imageUrl
             )}&views=${encodeURIComponent(JSON.stringify(selectedViews))}`
           );
         }}
