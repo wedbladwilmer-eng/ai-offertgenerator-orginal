@@ -12,6 +12,8 @@ export type Product = {
   logo_position: string | null;
   brand?: string;
   slug?: string;
+  folder_id?: string;
+  colorCode?: string;
   variations?: Array<{
     color: string;
     colorCode?: string;
