@@ -1,6 +1,3 @@
-Replace the file at src/pages/Quote.tsx with the following content:
-
-------------------------------------------------------------
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -223,9 +220,7 @@ const Quote = () => {
                                 src={url}
                                 alt={`Produktvy ${idx + 1}`}
                                 className={`rounded-lg border-2 ${
-                                  selectedViews.includes(viewKey)
-                                    ? "border-blue-500"
-                                    : "border-gray-300 opacity-40"
+                                  selectedViews.includes(viewKey) ? "border-blue-500" : "border-gray-300 opacity-40"
                                 } transition-all`}
                               />
                               <button
