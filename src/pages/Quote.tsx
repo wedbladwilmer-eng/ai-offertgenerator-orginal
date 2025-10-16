@@ -6,14 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Download, ArrowLeft } from "lucide-react";
+import { Download, ArrowLeft, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { generatePDF } from "@/utils/pdfGenerator";
 import { Product } from "@/hooks/useProducts";
 import kostaNadaProfilLogo from "@/assets/kosta-nada-profil-logo.png";
+import { ProductImageView } from "@/components/ProductImageView";
 
-// 🧩 Liten komponent för att visa vinkelbild med fallback (_F → _Front)
 const AngleImage = ({ shortUrl, longUrl, label }: { shortUrl: string; longUrl: string; label: string }) => {
   const [src, setSrc] = useState(shortUrl);
   const [failed, setFailed] = useState(false);
@@ -42,11 +42,14 @@ const Quote = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // 🟢 Läs in parametrar från URL (skickas från ProductDisplay)
+  // ✅ Lägg till dessa rader här
   const colorCodeParam = searchParams.get("colorCode");
   const folderIdParam = searchParams.get("folderId");
   const imageUrlParam = searchParams.get("imageUrl");
-  const productId = searchParams.get("productId");
+
+  const [product, setProduct] = useState<Product | null>(null);
+  const [mockupUrl, setMockupUrl] = useState<string>("");
+  const [quantity, setQuantity] = useState(1);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [mockupUrl, setMockupUrl] = useState<string>("");
@@ -55,11 +58,15 @@ const Quote = () => {
   const [margin, setMargin] = useState("2");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedViews] = useState<string[]>(["front", "right", "back", "left"]);
+  const [selectedViews, setSelectedViews] = useState<string[]>(["Front", "Right", "Back", "Left"]);
+
+  const productId = searchParams.get("productId");
+  const mockupParam = searchParams.get("mockup");
 
   useEffect(() => {
     if (productId) fetchProduct();
-  }, [productId]);
+    if (mockupParam) setMockupUrl(mockupParam);
+  }, [productId, mockupParam]);
 
   // 🔹 Hämta produktdata via Supabase Edge Function
   const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
@@ -90,12 +97,6 @@ const Quote = () => {
         setProduct(null);
         return;
       }
-
-      // 🧠 Uppdatera med färg och folder från URL-parametrar
-      if (colorCodeParam) productData.colorCode = colorCodeParam;
-      if (folderIdParam) productData.folder_id = folderIdParam;
-      if (imageUrlParam) productData.image_url = decodeURIComponent(imageUrlParam);
-
       setProduct(productData);
     } catch {
       toast({
@@ -106,6 +107,10 @@ const Quote = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleView = (view: string) => {
+    setSelectedViews((prev) => (prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]));
   };
 
   if (isLoading || !product) {
@@ -154,42 +159,19 @@ const Quote = () => {
     }
   };
 
-  // 🧩 Funktion för att generera 4 vinklar från tabellmönstret
+  // 🧠 Skapa dynamiska bildlänkar utifrån huvudbilden
   const generateAngleImages = (baseUrl: string) => {
     if (!baseUrl) return [];
-
-    // Hämta slug_name automatiskt ur bildadressen (t.ex. "HotpantsKids")
-    const slugMatch = baseUrl.match(/_(?:[0-9A-Za-z]+)_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
-    const slugName = slugMatch ? slugMatch[1] : product.slug || "Produkt";
-
-    const articleNumber = product.id || "000000";
-    const folderId = folderIdParam || product.folder_id || "000000";
-    const colorCode = colorCodeParam || product.colorCode || "00";
-
-    const base = `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slugName}`;
-
+    const cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
     return [
-      { label: "Front", short: `${base}_F.jpg`, long: `${base}_Front.jpg` },
-      { label: "Right", short: `${base}_R.jpg`, long: `${base}_Right.jpg` },
-      { label: "Back", short: `${base}_B.jpg`, long: `${base}_Back.jpg` },
-      { label: "Left", short: `${base}_L.jpg`, long: `${base}_Left.jpg` },
+      { label: "front", short: `${cleanBase}_F.jpg`, long: `${cleanBase}_Front.jpg` },
+      { label: "right", short: `${cleanBase}_R.jpg`, long: `${cleanBase}_Right.jpg` },
+      { label: "back", short: `${cleanBase}_B.jpg`, long: `${cleanBase}_Back.jpg` },
+      { label: "left", short: `${cleanBase}_L.jpg`, long: `${cleanBase}_Left.jpg` },
     ];
   };
 
   const angleImages = generateAngleImages(product.image_url || "");
-
-  // 🖼️ Dynamisk huvudbild (rätt färg och folder)
-  const mainImageUrl = (() => {
-    let base = mockupUrl || product.image_url || "/placeholder.svg";
-    const slugMatch = base.match(/_(?:[0-9A-Za-z]+)_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
-    const slugName = slugMatch ? slugMatch[1] : product.slug || "Produkt";
-
-    const articleNumber = product.id || "000000";
-    const folderId = folderIdParam || product.folder_id || "000000";
-    const colorCode = colorCodeParam || product.colorCode || "00";
-
-    return `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slugName}_Front.jpg`;
-  })();
 
   return (
     <div className="min-h-screen bg-background">
@@ -266,7 +248,7 @@ const Quote = () => {
                   {/* Huvudbild */}
                   <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
                     <img
-                      src={mainImageUrl}
+                      src={mockupUrl || product.image_url || "/placeholder.svg"}
                       alt={product.name}
                       className="max-h-[400px] w-auto object-contain rounded-sm border border-border"
                     />
@@ -275,9 +257,18 @@ const Quote = () => {
                   {/* Fyra vinklade bilder */}
                   <div>
                     <h4 className="font-semibold mb-2">🖼️ Produktbilder (vinklar)</h4>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Klicka för att välja vilka vinklar som ska ingå i offerten
+                    </p>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {angleImages.map(({ label, short, long }) => (
-                        <AngleImage key={label} shortUrl={short} longUrl={long} label={label} />
+                      {["Front", "Right", "Back", "Left"].map((view) => (
+                        <ProductImageView
+                          key={view}
+                          view={view}
+                          baseImageUrl={product.image_url || ""}
+                          selected={selectedViews.includes(view)}
+                          onToggle={() => toggleView(view)}
+                        />
                       ))}
                     </div>
                   </div>
