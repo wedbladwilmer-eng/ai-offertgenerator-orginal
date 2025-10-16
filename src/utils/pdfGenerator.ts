@@ -197,59 +197,55 @@ export const generatePDF = async (data: PDFData) => {
 
   // Add a new page for product angles
   pdf.addPage();
-  let angleYPosition = 20;
-
+  
   pdf.setFontSize(14);
   pdf.setFont("helvetica", "bold");
-  pdf.text("Produktvinklar", 20, angleYPosition);
-  angleYPosition += 15;
+  pdf.text("Produktvinklar", 20, 20);
 
-  // Display all four views in a 2x2 grid
-  const allViews = ["Front", "Right", "Back", "Left"];
-  const angleImagesPerRow = 2;
-  const angleImageWidth = 80;
-  const angleImageHeight = 80;
-  const angleGap = 10;
+  // Define fixed positions for 2x2 grid
+  const positions = [
+    { view: "Front", x: 20, y: 35, label: "Framsida" },
+    { view: "Right", x: 115, y: 35, label: "Höger sida" },
+    { view: "Back", x: 20, y: 125, label: "Baksida" },
+    { view: "Left", x: 115, y: 125, label: "Vänster sida" }
+  ];
 
-  for (let i = 0; i < allViews.length; i++) {
-    const view = allViews[i];
+  const imageSize = 80;
+
+  // Render each view in its fixed position
+  for (const pos of positions) {
+    const shortUrl = `${basePattern}_${pos.view[0].toUpperCase()}.jpg`;
+    const longUrl = `${basePattern}_${pos.view}.jpg`;
     
-    // Generate URL based on view name (Front, Right, Back, Left)
-    const shortUrl = `${basePattern}_${view[0].toUpperCase()}.jpg`;
-    const longUrl = `${basePattern}_${view}.jpg`;
-    
-    const col = i % angleImagesPerRow;
-    const row = Math.floor(i / angleImagesPerRow);
-    const x = 20 + col * (angleImageWidth + angleGap);
-    const y = angleYPosition + row * (angleImageHeight + angleGap + 10);
+    console.log(`Attempting to load ${pos.view}:`, shortUrl);
 
     // Try to add image, if both fail, show placeholder
-    let imageAdded = await addImageToPDF(shortUrl, x, y, angleImageWidth, angleImageHeight);
+    let imageAdded = await addImageToPDF(shortUrl, pos.x, pos.y, imageSize, imageSize);
     if (!imageAdded) {
-      imageAdded = await addImageToPDF(longUrl, x, y, angleImageWidth, angleImageHeight);
+      console.log(`Short URL failed, trying long URL:`, longUrl);
+      imageAdded = await addImageToPDF(longUrl, pos.x, pos.y, imageSize, imageSize);
     }
 
     // If image still not added, draw placeholder
     if (!imageAdded) {
-      pdf.setFillColor(240, 240, 240);
-      pdf.rect(x, y, angleImageWidth, angleImageHeight, "F");
+      console.log(`Both URLs failed for ${pos.view}, drawing placeholder`);
       
+      // Draw light gray rectangle
+      pdf.setFillColor(240, 240, 240);
+      pdf.setDrawColor(200, 200, 200);
+      pdf.rect(pos.x, pos.y, imageSize, imageSize, "FD");
+      
+      // Add "Ingen bild" text centered
       pdf.setFontSize(10);
       pdf.setTextColor(100, 100, 100);
-      pdf.text("Ingen bild", x + angleImageWidth / 2, y + angleImageHeight / 2, { align: "center" });
+      pdf.text("Ingen bild", pos.x + imageSize / 2, pos.y + imageSize / 2, { align: "center" });
       pdf.setTextColor(0, 0, 0);
     }
 
     // Add label below image or placeholder
     pdf.setFontSize(9);
     pdf.setFont("helvetica", "normal");
-    const labels: Record<string, string> = {
-      Front: "Framsida",
-      Right: "Höger sida",
-      Back: "Baksida",
-      Left: "Vänster sida"
-    };
-    pdf.text(labels[view] || view, x + angleImageWidth / 2, y + angleImageHeight + 5, { align: "center" });
+    pdf.text(pos.label, pos.x + imageSize / 2, pos.y + imageSize + 5, { align: "center" });
   }
 
   // Product details next to image
