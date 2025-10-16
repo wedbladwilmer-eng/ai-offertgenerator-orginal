@@ -53,6 +53,9 @@ const Quote = () => {
 
   const productId = searchParams.get("productId");
   const mockupParam = searchParams.get("mockup");
+  const colorCodeParam = searchParams.get("colorCode");
+  const folderIdParam = searchParams.get("folderId");
+  const imageUrlParam = searchParams.get("imageUrl");
 
   useEffect(() => {
     if (productId) fetchProduct();
@@ -88,6 +91,12 @@ const Quote = () => {
         setProduct(null);
         return;
       }
+      
+      // Uppdatera med färgkod och folder_id från URL-parametrar
+      if (colorCodeParam) productData.colorCode = colorCodeParam;
+      if (folderIdParam) productData.folder_id = folderIdParam;
+      if (imageUrlParam) productData.image_url = decodeURIComponent(imageUrlParam);
+      
       setProduct(productData);
     } catch {
       toast({
@@ -155,7 +164,18 @@ const Quote = () => {
   // 🧠 Skapa dynamiska bildlänkar utifrån huvudbilden
   const generateAngleImages = (baseUrl: string) => {
     if (!baseUrl) return [];
-    const cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
+    let cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
+    
+    // Byt färgkod om den finns i URL-parametrarna
+    if (colorCodeParam) {
+      cleanBase = cleanBase.replace(/[_-]\d{2,3}[_-]/, `_${colorCodeParam}_`);
+    }
+    
+    // Byt folder_id om den finns i URL-parametrarna
+    if (folderIdParam) {
+      cleanBase = cleanBase.replace(/\/\d{5,6}\//, `/${folderIdParam}/`);
+    }
+    
     return [
       { label: "front", short: `${cleanBase}_F.jpg`, long: `${cleanBase}_Front.jpg` },
       { label: "right", short: `${cleanBase}_R.jpg`, long: `${cleanBase}_Right.jpg` },
