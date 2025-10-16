@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Product } from "@/hooks/useProducts";
 import { ProductImageView } from "@/components/ProductImageView";
+import { useNavigate } from "react-router-dom";
 
 type ProductDisplayProps = {
   product: Product;
@@ -11,18 +12,16 @@ type ProductDisplayProps = {
 const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }) => {
   if (!product) return null;
 
+  const navigate = useNavigate();
   const variations = product.variations || [];
   const images = product.images || [];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedViews, setSelectedViews] = useState<string[]>(["Front", "Right", "Back", "Left"]);
 
   const hasMultiple = variations.length > 1 || images.length > 1;
-  const currentImage = variations.length > 0 
-    ? variations[currentIndex]?.image_url 
-    : images.length > 0 
-    ? images[currentIndex]
-    : product.image_url;
-  const currentColor = variations.length > 0 ? variations[currentIndex]?.color : "Standard";
+  const currentVariation = variations[currentIndex];
+  const currentImage = currentVariation?.image_url || images[currentIndex] || product.image_url;
+  const currentColor = currentVariation?.color || "Standard";
 
   const handleNext = () => {
     if (!hasMultiple) return;
@@ -54,9 +53,7 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
   };
 
   const toggleView = (view: string) => {
-    setSelectedViews((prev) =>
-      prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]
-    );
+    setSelectedViews((prev) => (prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]));
   };
 
   return (
@@ -91,7 +88,7 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
                 <ProductImageView
                   key={view}
                   view={view}
-                  baseImageUrl={(currentImage || product.image_url) ?? ""}
+                  baseImageUrl={currentImage ?? product.image_url ?? ""}
                   selected={selectedViews.includes(view)}
                   onToggle={() => toggleView(view)}
                 />
@@ -134,16 +131,23 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
         {product.price_ex_vat && <p className="mt-2 font-semibold">{product.price_ex_vat} kr (exkl. moms)</p>}
       </div>
 
-
       {/* Offertknapp */}
-      {onAddToQuote && (
-        <Button
-          onClick={() => onAddToQuote(product, 1, selectedViews)}
-          className="mt-5 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
-        >
-          Lägg till i offert
-        </Button>
-      )}
+      <Button
+        onClick={() => {
+          const selectedColorCode = currentVariation?.colorCode || product.colorCode || "";
+          const selectedFolderId = currentVariation?.folder_id || product.folder_id || "";
+          const imageUrl = currentVariation?.image_url || product.image_url || "";
+
+          navigate(
+            `/quote?productId=${product.id}&colorCode=${selectedColorCode}&folderId=${selectedFolderId}&imageUrl=${encodeURIComponent(
+              imageUrl,
+            )}`,
+          );
+        }}
+        className="mt-5 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
+      >
+        Skapa offert
+      </Button>
     </div>
   );
 };
