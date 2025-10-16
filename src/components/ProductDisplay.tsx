@@ -11,10 +11,15 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
   if (!product) return null;
 
   const variations = product.variations || [];
+  const images = product.images || [];
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const hasMultiple = variations.length > 1;
-  const currentImage = variations.length > 0 ? variations[currentIndex]?.image_url : product.image_url;
+  const hasMultiple = variations.length > 1 || images.length > 1;
+  const currentImage = variations.length > 0 
+    ? variations[currentIndex]?.image_url 
+    : images.length > 0 
+    ? images[currentIndex]
+    : product.image_url;
   const currentColor = variations.length > 0 ? variations[currentIndex]?.color : "Standard";
 
   const handleNext = () => {

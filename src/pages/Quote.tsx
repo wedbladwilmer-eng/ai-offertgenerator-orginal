@@ -198,45 +198,43 @@ const Quote = () => {
               <div className="grid lg:grid-cols-2 gap-8">
                 {/* Bilder */}
                 <div className="space-y-4">
-                  {/* Huvudbild */}
-                  <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
-                    <img
-                      src={mockupUrl || product.image_url || "/placeholder.svg"}
-                      alt={product.name}
-                      className="max-h-[400px] w-auto object-contain rounded-sm border border-border"
-                    />
-                  </div>
+                  {/* Produktbilder i fyra vinklar */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {["Front", "Right", "Back", "Left"].map((view) => {
+                      const baseUrl = product.image_url || "";
+                      // Remove any existing suffix
+                      const cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
+                      const shortUrl = `${cleanBase}_${view[0].toUpperCase()}.jpg`;
+                      const longUrl = `${cleanBase}_${view}.jpg`;
 
-                  {/* Fyra produktbilder (från product.images) */}
-                  {product.images && product.images.length > 0 ? (
-                    <div>
-                      <h4 className="font-semibold mb-2">🖼️ Produktbilder (vinklar)</h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        {product.images.map((url, idx) => {
-                          const viewKey = ["front", "right", "back", "left"][idx] || `img${idx}`;
-                          return (
-                            <div key={idx} className="relative">
-                              <img
-                                src={url}
-                                alt={`Produktvy ${idx + 1}`}
-                                className={`rounded-lg border-2 ${
-                                  selectedViews.includes(viewKey) ? "border-blue-500" : "border-gray-300 opacity-40"
-                                } transition-all`}
-                              />
-                              <button
-                                onClick={() => toggleView(viewKey)}
-                                className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700"
-                              >
-                                <X size={14} />
-                              </button>
+                      const [src, setSrc] = React.useState(shortUrl);
+                      const [hasError, setHasError] = React.useState(false);
+
+                      return (
+                        <div key={view} className="relative bg-white border rounded-lg overflow-hidden aspect-square flex items-center justify-center">
+                          {!hasError ? (
+                            <img
+                              src={src}
+                              alt={`Produktvy ${view}`}
+                              className="w-full h-full object-contain"
+                              onError={() => {
+                                // Fallback from short (F) to long (Front) variant
+                                if (src !== longUrl) {
+                                  setSrc(longUrl);
+                                } else {
+                                  setHasError(true);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="text-center text-muted-foreground text-xs p-2">
+                              Ingen bild tillgänglig
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-sm">Ingen bild tillgänglig</p>
-                  )}
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Detaljer */}

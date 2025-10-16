@@ -170,7 +170,7 @@ export const QuoteList = ({ quote, onUpdateItem, onRemoveItem, onClearQuote, tot
             <LogoUpload
               productId={item.product.id}
               productImage={item.product.image_url}
-              logoPosition={item.product.logo_position}
+              logoPosition={item.product.logo_position ? JSON.stringify(item.product.logo_position) : undefined}
               onLogoUploaded={(logoUrl, mockupUrl) =>
                 onUpdateItem(item.product.id, {
                   logo_url: logoUrl,
