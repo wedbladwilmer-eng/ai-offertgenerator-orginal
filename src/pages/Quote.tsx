@@ -1,3 +1,6 @@
+Replace the file at src/pages/Quote.tsx with the following content:
+
+------------------------------------------------------------
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -88,20 +91,6 @@ const Quote = () => {
       </div>
     );
   }
-
-  // 🧩 Dynamiska bildparametrar
-  const folderId = product.folder_id || "108461";
-  const articleNumber = product.id || "032103";
-  const colorCode = product.variations?.[0]?.colorCode || product.colorCode || "99";
-  const slugName = (product.name || "").replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
-
-  // 🔸 Skapa dynamiska bildlänkar (korrekt NWG-format)
-  const productViews = {
-    front: `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slugName}_Front.jpg`,
-    right: `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slugName}_Right.jpg`,
-    back: `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slugName}_Back.jpg`,
-    left: `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slugName}_Left.jpg`,
-  };
 
   const marginMultiplier = parseFloat(margin);
   const basePrice = product.price_ex_vat || 0;
@@ -212,6 +201,7 @@ const Quote = () => {
               <div className="grid lg:grid-cols-2 gap-8">
                 {/* Bilder */}
                 <div className="space-y-4">
+                  {/* Huvudbild */}
                   <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
                     <img
                       src={mockupUrl || product.image_url || "/placeholder.svg"}
@@ -220,29 +210,38 @@ const Quote = () => {
                     />
                   </div>
 
-                  {/* Välj vinklar */}
-                  <div>
-                    <h4 className="font-semibold mb-2">🖼️ Välj vinklar till offerten</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      {Object.entries(productViews).map(([key, url]) => (
-                        <div key={key} className="relative">
-                          <img
-                            src={url}
-                            alt={key}
-                            className={`rounded-lg border-2 ${
-                              selectedViews.includes(key) ? "border-blue-500" : "border-gray-300 opacity-40"
-                            } transition-all`}
-                          />
-                          <button
-                            onClick={() => toggleView(key)}
-                            className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ))}
+                  {/* Fyra produktbilder (från product.images) */}
+                  {product.images && product.images.length > 0 ? (
+                    <div>
+                      <h4 className="font-semibold mb-2">🖼️ Produktbilder (vinklar)</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {product.images.map((url, idx) => {
+                          const viewKey = ["front", "right", "back", "left"][idx] || `img${idx}`;
+                          return (
+                            <div key={idx} className="relative">
+                              <img
+                                src={url}
+                                alt={`Produktvy ${idx + 1}`}
+                                className={`rounded-lg border-2 ${
+                                  selectedViews.includes(viewKey)
+                                    ? "border-blue-500"
+                                    : "border-gray-300 opacity-40"
+                                } transition-all`}
+                              />
+                              <button
+                                onClick={() => toggleView(viewKey)}
+                                className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">Ingen bild tillgänglig</p>
+                  )}
                 </div>
 
                 {/* Detaljer */}
