@@ -40,12 +40,16 @@ const AngleImage = ({ shortUrl, longUrl, label }: { shortUrl: string; longUrl: s
 const Quote = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  // Läs in valda parametrar (från ProductDisplay)
+  const { toast } = useToast();
+
+  // ✅ Lägg till dessa rader här
   const colorCodeParam = searchParams.get("colorCode");
   const folderIdParam = searchParams.get("folderId");
   const imageUrlParam = searchParams.get("imageUrl");
 
-  const { toast } = useToast();
+  const [product, setProduct] = useState<Product | null>(null);
+  const [mockupUrl, setMockupUrl] = useState<string>("");
+  const [quantity, setQuantity] = useState(1);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [mockupUrl, setMockupUrl] = useState<string>("");
