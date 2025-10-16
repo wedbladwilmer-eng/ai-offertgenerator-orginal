@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Upload, FileText, X } from "lucide-react";
+import { Trash2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import type { QuoteItem } from "@/hooks/useProducts";
 import { LogoUpload } from "./LogoUpload";
 import { generatePDF } from "@/utils/pdfGenerator";
+import { ProductImageView } from "@/components/ProductImageView";
 
 interface QuoteListProps {
   quote: QuoteItem[];
@@ -23,9 +24,9 @@ export const QuoteList = ({ quote, onUpdateItem, onRemoveItem, onClearQuote, tot
   const [customerName, setCustomerName] = useState("");
 
   // 🔹 Hantering av bildvinklar per produkt
-  const defaultViews = ["front", "right", "back", "left"];
+  const defaultViews = ["Front", "Right", "Back", "Left"];
   const [selectedViews, setSelectedViews] = useState<Record<string, string[]>>(
-    Object.fromEntries(quote.map((item) => [item.product.id, [...defaultViews]])),
+    Object.fromEntries(quote.map((item) => [item.product.id, item.selectedViews || [...defaultViews]])),
   );
 
   const handleToggleView = (productId: string, view: string) => {
@@ -74,14 +75,6 @@ export const QuoteList = ({ quote, onUpdateItem, onRemoveItem, onClearQuote, tot
       </Card>
     );
   }
-
-  // 🔹 Exempel-länkar för Miami PRO Roundneck (kan ersättas med dynamiska länkar)
-  const productViews = {
-    front: "https://images.nwgmedia.com/preview/377113/0201050-91_Miami_PRO_Roundneck_Front.jpg",
-    right: "https://images.nwgmedia.com/preview/386550/0201050-91_MiamiPRORoundneck_grey_Right.jpg",
-    back: "https://images.nwgmedia.com/preview/386560/0201050-91_MiamiPRORoundneck_grey_Back.jpg",
-    left: "https://images.nwgmedia.com/preview/386562/0201050-91_MiamiPRORoundneck_grey_Left.jpg",
-  };
 
   return (
     <Card>
@@ -143,28 +136,26 @@ export const QuoteList = ({ quote, onUpdateItem, onRemoveItem, onClearQuote, tot
             </div>
 
             {/* 🖼️ Välj vinklar till offerten */}
-            <div>
-              <h5 className="font-semibold mb-2">🖼️ Välj vinklar till offerten</h5>
-              <div className="grid grid-cols-2 gap-4">
-                {Object.entries(productViews).map(([key, url]) => (
-                  <div key={key} className="relative">
-                    <img
-                      src={url}
-                      alt={key}
-                      className={`rounded-lg border-2 ${
-                        selectedViews[item.product.id]?.includes(key) ? "border-blue-500" : "border-gray-300 opacity-40"
-                      } transition-all`}
-                    />
-                    <button
-                      onClick={() => handleToggleView(item.product.id, key)}
-                      className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700"
+            {item.product.image_url && (
+              <div>
+                <h5 className="font-semibold mb-2">🖼️ Välj vinklar till offerten</h5>
+                <div className="grid grid-cols-2 gap-4">
+                  {["Front", "Right", "Back", "Left"].map((view) => (
+                    <div
+                      key={view}
+                      onClick={() => handleToggleView(item.product.id, view)}
+                      className="cursor-pointer"
                     >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
+                      <ProductImageView
+                        view={view}
+                        baseImageUrl={item.product.image_url || ""}
+                        selected={selectedViews[item.product.id]?.includes(view)}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* 🧢 Logouppladdning */}
             <LogoUpload

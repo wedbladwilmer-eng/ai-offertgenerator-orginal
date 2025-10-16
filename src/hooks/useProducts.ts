@@ -99,7 +99,7 @@ export const useProducts = () => {
     }
   };
 
-  const addToQuote = (product: Product, quantity: number = 1) => {
+  const addToQuote = (product: Product, quantity: number = 1, selectedViews?: string[]) => {
     const existingItem = quote.find((item) => item.product.id === product.id);
     if (existingItem) {
       setQuote(
@@ -108,7 +108,7 @@ export const useProducts = () => {
         )
       );
     } else {
-      setQuote([...quote, { product, quantity }]);
+      setQuote([...quote, { product, quantity, selectedViews }]);
     }
   };
 

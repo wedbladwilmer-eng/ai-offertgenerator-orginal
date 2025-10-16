@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Product } from "@/hooks/useProducts";
+import { ProductImageView } from "@/components/ProductImageView";
 
 type ProductDisplayProps = {
   product: Product;
-  onAddToQuote?: (product: Product, quantity: number) => void;
+  onAddToQuote?: (product: Product, quantity: number, selectedViews?: string[]) => void;
 };
 
 const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }) => {
@@ -13,6 +14,7 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
   const variations = product.variations || [];
   const images = product.images || [];
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedViews, setSelectedViews] = useState<string[]>(["Front", "Right", "Back", "Left"]);
 
   const hasMultiple = variations.length > 1 || images.length > 1;
   const currentImage = variations.length > 0 
@@ -49,6 +51,12 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
     if (Math.abs(distance) > 50) {
       distance > 0 ? handleNext() : handlePrev();
     }
+  };
+
+  const toggleView = (view: string) => {
+    setSelectedViews((prev) =>
+      prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]
+    );
   };
 
   return (
@@ -106,10 +114,28 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
         {product.price_ex_vat && <p className="mt-2 font-semibold">{product.price_ex_vat} kr (exkl. moms)</p>}
       </div>
 
+      {/* Bildvinklar */}
+      {product.image_url && (
+        <div className="mt-6">
+          <h3 className="text-sm font-semibold mb-3">Välj bildvinklar för offerten:</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {["Front", "Right", "Back", "Left"].map((view) => (
+              <ProductImageView
+                key={view}
+                view={view}
+                baseImageUrl={product.image_url || ""}
+                selected={selectedViews.includes(view)}
+                onToggle={() => toggleView(view)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Offertknapp */}
       {onAddToQuote && (
         <Button
-          onClick={() => onAddToQuote(product, 1)}
+          onClick={() => onAddToQuote(product, 1, selectedViews)}
           className="mt-5 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
         >
           Lägg till i offert
