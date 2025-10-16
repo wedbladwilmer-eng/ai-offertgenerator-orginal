@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from "lucide-react";
 
 interface ProductImageViewProps {
   view: string;
@@ -13,6 +14,15 @@ export const ProductImageView: React.FC<ProductImageViewProps> = ({ view, baseIm
 
   const [src, setSrc] = useState(shortUrl);
   const [hasError, setHasError] = useState(false);
+
+  const iconMap = {
+    Front: ArrowUp,
+    Back: ArrowDown,
+    Left: ArrowLeft,
+    Right: ArrowRight,
+  };
+
+  const Icon = iconMap[view as keyof typeof iconMap];
 
   return (
     <div className="relative bg-white border rounded-lg overflow-hidden aspect-square flex items-center justify-center">
@@ -31,8 +41,9 @@ export const ProductImageView: React.FC<ProductImageViewProps> = ({ view, baseIm
           }}
         />
       ) : (
-        <div className="text-center text-muted-foreground text-xs p-2">
-          <div className="font-medium">{view}</div>
+        <div className="text-center text-muted-foreground flex flex-col items-center justify-center gap-2 p-4">
+          <Icon size={32} className="opacity-40" />
+          <div className="text-xs font-medium">{view}</div>
           <div className="text-[10px]">Ingen bild tillgänglig</div>
         </div>
       )}
