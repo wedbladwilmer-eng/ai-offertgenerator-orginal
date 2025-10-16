@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { buildImageUrls, type ProductImageRow } from "@/lib/buildImageUrls";
 
 export type Product = {
   id: string;
@@ -20,6 +21,7 @@ export type Product = {
     articleNumber?: string;
     image_url?: string;
   }>;
+  images?: string[]; // nya genererade bilder
 };
 
 export type QuoteItem = {
@@ -42,19 +44,44 @@ export const useProducts = () => {
         body: { articleNumber },
       });
 
-      if (error) {
-        throw new Error(error.message || "Failed to fetch product data");
-      }
-
-      if (!data) {
-        throw new Error("No data returned from new-wave-proxy");
-      }
+      if (error) throw new Error(error.message || "Failed to fetch product data");
+      if (!data) throw new Error("No data returned from new-wave-proxy");
 
       console.log("✅ Product fetched from Edge Function:", data);
       return data as Product;
     } catch (error) {
       console.error("Error fetching from new-wave-proxy:", error);
       throw error;
+    }
+  };
+
+  // 🖼️ Hämta bilder från tabellen product_images
+  const fetchImagesFromDatabase = async (articleNumber: string): Promise<string[] | null> => {
+    try {
+      const { data, error } = await supabase
+        .from("product_images")
+        .select("image_url, folder_id, article_number, color_code, slug_name")
+        .eq("article_number", articleNumber)
+        .maybeSingle();
+
+      if (error) {
+        console.warn("Fel vid SELECT mot product_images:", error.message);
+        return null;
+      }
+      if (!data) return null;
+
+      // Om image_url finns i tabellen → använd den
+      if (data.image_url) return [data.image_url];
+
+      // Annars bygg dynamiska URL:er
+      if (data.folder_id && data.slug_name && data.color_code) {
+        return buildImageUrls(data as ProductImageRow);
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Fel vid hämtning från product_images:", error);
+      return null;
     }
   };
 
@@ -83,7 +110,16 @@ export const useProducts = () => {
         return;
       }
 
+      // 🧠 Hämta bilder om saknas
+      let images: string[] | null = null;
+      if (!productData.image_url) {
+        images = await fetchImagesFromDatabase(articleNumber.trim());
+      }
+
+      productData.images = images?.length ? images : productData.image_url ? [productData.image_url] : [];
+
       setProduct(productData);
+
       toast({
         title: "Produkt hittad",
         description: `${productData.name} laddades framgångsrikt`,
