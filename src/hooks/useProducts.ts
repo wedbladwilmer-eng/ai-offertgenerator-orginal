@@ -1,163 +1,144 @@
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+// src/hooks/useProducts.ts
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabaseClient"; // Justera om din klient ligger annorlunda
+import { buildImageUrls, type ProductImageRow } from "@/lib/buildImageUrls";
 
 export type Product = {
-  id: string;
   name: string;
-  description: string | null;
-  price_ex_vat: number | null;
-  image_url: string | null;
-  category: string | null;
-  logo_position: string | null;
-  brand?: string;
-  slug?: string;
-  variations?: Array<{
-    color: string;
-    colorCode?: string;
-    articleNumber?: string;
-    image_url?: string;
-  }>;
+  article_number: string;
+  category?: string | null;
+  price?: number | null;
+  image_url?: string | null; // ev. en primärbild från Edge-funktionen
+  images?: string[]; // våra fyra genererade bilder (Front/Right/Back/Left) eller fallback med 1 bild
 };
 
-export type QuoteItem = {
-  product: Product;
-  quantity: number;
-  logo_url?: string;
-  mockup_url?: string;
+type UseProductsState =
+  | { loading: true; error: null; product: null }
+  | { loading: false; error: string | null; product: Product | null };
+
+type NewWaveProxyResponse = {
+  // Anpassa om din Edge-funktion returnerar annan struktur
+  name: string;
+  article_number: string;
+  category?: string | null;
+  price?: number | null;
+  image_url?: string | null;
 };
 
-export const useProducts = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [product, setProduct] = useState<Product | null>(null);
-  const [quote, setQuote] = useState<QuoteItem[]>([]);
-  const { toast } = useToast();
+async function fetchProductFromEdge(articleNumber: string): Promise<Product> {
+  // Om din Edge-funktion förväntar sig annan payload/nyckel,
+  // justera body nedan (t.ex. { articleNumber }).
+  const { data, error } = await supabase.functions.invoke<NewWaveProxyResponse>("new-wave-proxy", {
+    body: { article_number: articleNumber },
+  });
 
-  // 🧩 Hämta produktdata från nya Edge Function "new-wave-proxy"
-  const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
-    try {
-      const { data, error } = await supabase.functions.invoke("new-wave-proxy", {
-        body: { articleNumber },
-      });
+  if (error) {
+    throw new Error(`Kunde inte hämta produkt: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error("Tomt svar från new-wave-proxy.");
+  }
 
-      if (error) {
-        throw new Error(error.message || "Failed to fetch product data");
-      }
-
-      if (!data) {
-        throw new Error("No data returned from new-wave-proxy");
-      }
-
-      console.log("✅ Product fetched from Edge Function:", data);
-      return data as Product;
-    } catch (error) {
-      console.error("Error fetching from new-wave-proxy:", error);
-      throw error;
-    }
+  return {
+    name: data.name,
+    article_number: data.article_number,
+    category: data.category ?? null,
+    price: data.price ?? null,
+    image_url: data.image_url ?? null,
   };
+}
 
-  // 🔍 Sök produkt via artikelnummer
-  const searchByArticleNumber = async (articleNumber: string) => {
-    if (!articleNumber.trim()) {
-      toast({
-        title: "Fel",
-        description: "Ange ett artikelnummer",
-        variant: "destructive",
-      });
-      return;
-    }
+async function maybeLookupImagesInSupabase(articleNumber: string): Promise<string[] | null> {
+  // Om du har flera rader per artikelnummer, kan du här lägga till
+  // extra filter (t.ex. på färg) eller ta första bästa.
+  const { data, error } = await supabase
+    .from("product_images")
+    .select("folder_id, article_number, color_code, slug_name")
+    .eq("article_number", articleNumber)
+    .limit(1);
 
-    setIsLoading(true);
-    try {
-      const productData = await fetchProductData(articleNumber.trim());
+  if (error) {
+    // Vi loggar och fortsätter utan att krascha hooken.
+    console.warn("Fel vid SELECT mot product_images:", error.message);
+    return null;
+  }
 
-      if (!productData) {
-        toast({
-          title: "Produkt ej hittad",
-          description: `Ingen produkt med artikelnummer ${articleNumber} hittades`,
-          variant: "destructive",
-        });
-        setProduct(null);
+  const row = (data?.[0] ?? null) as ProductImageRow | null;
+  if (!row) return null;
+
+  return buildImageUrls(row);
+}
+
+/**
+ * useProducts: Hämtar en produkt via Edge-funktionen.
+ * Om image_url saknas, slår upp i product_images och genererar fyra bild-URL:er.
+ */
+export function useProducts(articleNumber: string | null): UseProductsState {
+  const [state, setState] = useState<UseProductsState>({
+    loading: true,
+    error: null,
+    product: null,
+  });
+
+  const normalizedArticle = useMemo(() => (articleNumber ?? "").trim(), [articleNumber]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function run() {
+      if (!normalizedArticle) {
+        if (isMounted) {
+          setState({
+            loading: false,
+            error: "Inget artikelnummer angivet.",
+            product: null,
+          });
+        }
         return;
       }
 
-      setProduct(productData);
-      toast({
-        title: "Produkt hittad",
-        description: `${productData.name} laddades framgångsrikt`,
-      });
-    } catch (error) {
-      console.error("Error:", error);
-      toast({
-        title: "Fel",
-        description: "Det gick inte att hämta produkten från New Wave",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+      setState({ loading: true, error: null, product: null });
+
+      try {
+        const product = await fetchProductFromEdge(normalizedArticle);
+
+        // Om Edge-funktionen inte gav någon bild: använd vår Supabase-tabell.
+        let images: string[] | null = null;
+        if (!product.image_url) {
+          images = await maybeLookupImagesInSupabase(normalizedArticle);
+        }
+
+        // Fallback: om vi inte lyckades generera 4 bilder men har en singelbild, visa åtminstone den.
+        if (!images || images.length === 0) {
+          if (product.image_url) {
+            images = [product.image_url];
+          }
+        }
+
+        const productWithImages: Product = {
+          ...product,
+          images: images ?? [],
+        };
+
+        if (isMounted) {
+          setState({ loading: false, error: null, product: productWithImages });
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setState({
+            loading: false,
+            error: err?.message ?? "Ett oväntat fel uppstod.",
+            product: null,
+          });
+        }
+      }
     }
-  };
 
-  // ➕ Lägg till produkt i offert
-  const addToQuote = (product: Product, quantity: number) => {
-    const existingItem = quote.find((item) => item.product.id === product.id);
+    run();
+    return () => {
+      isMounted = false;
+    };
+  }, [normalizedArticle]);
 
-    if (existingItem) {
-      setQuote(
-        quote.map((item) => (item.product.id === product.id ? { ...item, quantity: item.quantity + quantity } : item)),
-      );
-    } else {
-      setQuote([...quote, { product, quantity }]);
-    }
-
-    toast({
-      title: "Tillagd i offert",
-      description: `${quantity} st ${product.name} tillagd`,
-    });
-  };
-
-  // ✏️ Uppdatera offertpost
-  const updateQuoteItem = (productId: string, updates: Partial<QuoteItem>) => {
-    setQuote(quote.map((item) => (item.product.id === productId ? { ...item, ...updates } : item)));
-  };
-
-  // ❌ Ta bort från offert
-  const removeFromQuote = (productId: string) => {
-    setQuote(quote.filter((item) => item.product.id !== productId));
-    toast({
-      title: "Borttagen",
-      description: "Produkten togs bort från offerten",
-    });
-  };
-
-  // 🧹 Töm hela offerten
-  const clearQuote = () => {
-    setQuote([]);
-  };
-
-  // 💰 Beräkna totalsumma exkl. moms
-  const getQuoteTotal = () => {
-    return quote.reduce((total, item) => {
-      const price = item.product.price_ex_vat || 0;
-      return total + price * item.quantity;
-    }, 0);
-  };
-
-  // 💰 Beräkna totalsumma inkl. moms
-  const getQuoteTotalWithVat = () => {
-    return getQuoteTotal() * 1.25; // 25% moms
-  };
-
-  return {
-    isLoading,
-    product,
-    quote,
-    searchByArticleNumber,
-    addToQuote,
-    updateQuoteItem,
-    removeFromQuote,
-    clearQuote,
-    getQuoteTotal,
-    getQuoteTotalWithVat,
-  };
-};
+  return state;
+}
