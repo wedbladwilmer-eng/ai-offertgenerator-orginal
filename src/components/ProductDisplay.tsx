@@ -152,7 +152,7 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
           navigate(
             `/quote?productId=${product.id}&colorCode=${selectedColorCode}&folderId=${selectedFolderId}&imageUrl=${encodeURIComponent(
               imageUrl
-            )}`
+            )}&views=${encodeURIComponent(JSON.stringify(selectedViews))}`
           );
         }}
         className="mt-5 w-full"

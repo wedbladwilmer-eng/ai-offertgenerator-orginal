@@ -86,6 +86,12 @@ const Quote: React.FC = () => {
   const colorCodeParam = searchParams.get("colorCode");
   const folderIdParam = searchParams.get("folderId");
   const imageUrlParam = searchParams.get("imageUrl");
+  const viewsParam = searchParams.get("views");
+  
+  // Parse selected views from URL or fallback to ["Front"]
+  const selectedViews = viewsParam 
+    ? JSON.parse(decodeURIComponent(viewsParam)) 
+    : ["Front"];
 
   useEffect(() => {
     if (!productId) {
@@ -155,7 +161,7 @@ const Quote: React.FC = () => {
     }
   }
 
-  // Build angle images
+  // Build angle images based on selected views
   const buildAngleImages = () => {
     const article = productId || "";
     const color = product.colorCode || "";
@@ -169,28 +175,12 @@ const Quote: React.FC = () => {
       ? `https://images.nwgmedia.com/preview/${folder}/${article}-${color}_${slug}`
       : `https://images.nwgmedia.com/preview/${folder}/${article}_${color}_${slug}`;
 
-    return [
-      {
-        label: "Front",
-        short: `${basePattern}_F.jpg`,
-        long: `${basePattern}_Front.jpg`,
-      },
-      {
-        label: "Right",
-        short: `${basePattern}_R.jpg`,
-        long: `${basePattern}_Right.jpg`,
-      },
-      {
-        label: "Back",
-        short: `${basePattern}_B.jpg`,
-        long: `${basePattern}_Back.jpg`,
-      },
-      {
-        label: "Left",
-        short: `${basePattern}_L.jpg`,
-        long: `${basePattern}_Left.jpg`,
-      },
-    ];
+    // Only build images for selected views
+    return selectedViews.map((view) => ({
+      label: view,
+      short: `${basePattern}_${view[0].toUpperCase()}.jpg`,
+      long: `${basePattern}_${view}.jpg`,
+    }));
   };
 
   const angleImages = buildAngleImages();
@@ -226,7 +216,7 @@ const Quote: React.FC = () => {
             price_ex_vat: pricePerUnit,
           },
           quantity,
-          selectedViews: ["Front", "Right", "Back", "Left"],
+          selectedViews: selectedViews,
           image_url: confirmedData?.imageUrl || mainImage,
         },
       ],
@@ -317,17 +307,26 @@ const Quote: React.FC = () => {
                   )}
                 </div>
 
-                {/* 4 Angle Thumbnails */}
+                {/* Selected Angle Thumbnails */}
                 {angleImages.length > 0 && (
-                  <div className="grid grid-cols-4 gap-2">
-                    {angleImages.map((img) => (
-                      <AngleImage
-                        key={img.label}
-                        shortUrl={img.short}
-                        longUrl={img.long}
-                        label={img.label}
-                      />
-                    ))}
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Visar valda vinklar: {selectedViews.join(", ")}
+                    </p>
+                    <div className={`grid gap-2 ${
+                      angleImages.length === 1 ? "grid-cols-1" : 
+                      angleImages.length === 2 ? "grid-cols-2" :
+                      "grid-cols-4"
+                    }`}>
+                      {angleImages.map((img) => (
+                        <AngleImage
+                          key={img.label}
+                          shortUrl={img.short}
+                          longUrl={img.long}
+                          label={img.label}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
 
