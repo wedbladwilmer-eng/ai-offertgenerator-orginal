@@ -165,13 +165,8 @@ export const generatePDF = async (data: PDFData) => {
 
   // Add selected product angle views if available
   if (data.selectedViews && data.selectedViews.length > 0) {
-    const productId = item.product.id;
-    const viewUrls: Record<string, string> = {
-      front: `https://images.nwgmedia.com/preview/377113/${productId}_Miami_PRO_Roundneck_Front.jpg`,
-      right: `https://images.nwgmedia.com/preview/386550/${productId}_MiamiPRORoundneck_grey_Right.jpg`,
-      back: `https://images.nwgmedia.com/preview/386560/${productId}_MiamiPRORoundneck_grey_Back.jpg`,
-      left: `https://images.nwgmedia.com/preview/386562/${productId}_MiamiPRORoundneck_grey_Left.jpg`
-    };
+    const baseImageUrl = item.product.image_url || "";
+    const cleanBase = baseImageUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
 
     // Add a new page for product angles
     pdf.addPage();
@@ -190,27 +185,32 @@ export const generatePDF = async (data: PDFData) => {
 
     for (let i = 0; i < data.selectedViews.length; i++) {
       const view = data.selectedViews[i];
-      const url = viewUrls[view];
       
-      if (url) {
-        const col = i % angleImagesPerRow;
-        const row = Math.floor(i / angleImagesPerRow);
-        const x = 20 + col * (angleImageWidth + angleGap);
-        const y = angleYPosition + row * (angleImageHeight + angleGap + 10);
+      // Generate URL based on view name (Front, Right, Back, Left)
+      const shortUrl = `${cleanBase}_${view[0].toUpperCase()}.jpg`;
+      const longUrl = `${cleanBase}_${view}.jpg`;
+      
+      const col = i % angleImagesPerRow;
+      const row = Math.floor(i / angleImagesPerRow);
+      const x = 20 + col * (angleImageWidth + angleGap);
+      const y = angleYPosition + row * (angleImageHeight + angleGap + 10);
 
-        await addImageToPDF(url, x, y, angleImageWidth, angleImageHeight);
-
-        // Add label below image
-        pdf.setFontSize(9);
-        pdf.setFont("helvetica", "normal");
-        const labels: Record<string, string> = {
-          front: "Framsida",
-          right: "Höger sida",
-          back: "Baksida",
-          left: "Vänster sida"
-        };
-        pdf.text(labels[view] || view, x + angleImageWidth / 2, y + angleImageHeight + 5, { align: "center" });
+      // Try short URL first, then long URL
+      let imageAdded = await addImageToPDF(shortUrl, x, y, angleImageWidth, angleImageHeight);
+      if (!imageAdded) {
+        imageAdded = await addImageToPDF(longUrl, x, y, angleImageWidth, angleImageHeight);
       }
+
+      // Add label below image
+      pdf.setFontSize(9);
+      pdf.setFont("helvetica", "normal");
+      const labels: Record<string, string> = {
+        Front: "Framsida",
+        Right: "Höger sida",
+        Back: "Baksida",
+        Left: "Vänster sida"
+      };
+      pdf.text(labels[view] || view, x + angleImageWidth / 2, y + angleImageHeight + 5, { align: "center" });
     }
   }
 
