@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { generatePDF } from "@/utils/pdfGenerator";
 import { Product } from "@/hooks/useProducts";
 import kostaNadaProfilLogo from "@/assets/kosta-nada-profil-logo.png";
-import { ProductImageView } from "@/components/ProductImageView";
 
 const Quote = () => {
   const [searchParams] = useSearchParams();
@@ -126,6 +125,20 @@ const Quote = () => {
     }
   };
 
+  // 🧠 Skapa dynamiska bildlänkar utifrån huvudbilden
+  const generateAngleImages = (baseUrl: string) => {
+    if (!baseUrl) return [];
+    const cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
+    return [
+      { label: "front", short: `${cleanBase}_F.jpg`, long: `${cleanBase}_Front.jpg` },
+      { label: "right", short: `${cleanBase}_R.jpg`, long: `${cleanBase}_Right.jpg` },
+      { label: "back", short: `${cleanBase}_B.jpg`, long: `${cleanBase}_Back.jpg` },
+      { label: "left", short: `${cleanBase}_L.jpg`, long: `${cleanBase}_Left.jpg` },
+    ];
+  };
+
+  const angleImages = generateAngleImages(product.image_url || "");
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -197,17 +210,48 @@ const Quote = () => {
             <div>
               <h2 className="text-xl font-semibold mb-6">Produktinformation</h2>
               <div className="grid lg:grid-cols-2 gap-8">
-                {/* Bilder */}
                 <div className="space-y-4">
-                  {/* Produktbilder i fyra vinklar */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {["Front", "Right", "Back", "Left"].map((view) => (
-                      <ProductImageView
-                        key={view}
-                        view={view}
-                        baseImageUrl={product.image_url || ""}
-                      />
-                    ))}
+                  {/* Huvudbild */}
+                  <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
+                    <img
+                      src={mockupUrl || product.image_url || "/placeholder.svg"}
+                      alt={product.name}
+                      className="max-h-[400px] w-auto object-contain rounded-sm border border-border"
+                    />
+                  </div>
+
+                  {/* 🆕 Fyra vinklar */}
+                  <div>
+                    <h4 className="font-semibold mb-2">🖼️ Produktbilder (vinklar)</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {angleImages.map(({ label, short, long }) => {
+                        const [src, setSrc] = useState(short);
+                        const [failed, setFailed] = useState(false);
+
+                        return (
+                          <div
+                            key={label}
+                            className="relative bg-white border rounded-lg overflow-hidden flex items-center justify-center h-40"
+                          >
+                            {!failed ? (
+                              <img
+                                src={src}
+                                alt={label}
+                                className="object-contain w-full h-full"
+                                onError={() => {
+                                  if (src === short) setSrc(long);
+                                  else setFailed(true);
+                                }}
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center text-gray-400 text-sm h-full">
+                                Ingen bild tillgänglig
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
