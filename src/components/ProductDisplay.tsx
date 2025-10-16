@@ -131,6 +131,35 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
         {product.price_ex_vat && <p className="mt-2 font-semibold">{product.price_ex_vat} kr (exkl. moms)</p>}
       </div>
 
+      {/* Skapa offert button */}
+      <Button
+        onClick={() => {
+          const imageUrl = currentImage || product.image_url || "";
+          
+          // Extract colorCode and folderId from imageUrl
+          // Format: https://images.nwgmedia.com/preview/{folder_id}/{article}_{color}_{slug}_{view}.jpg
+          let selectedColorCode = product.colorCode || "";
+          let selectedFolderId = product.folder_id || "";
+          
+          if (imageUrl) {
+            const folderMatch = imageUrl.match(/\/preview\/(\d{5,6})\//);
+            if (folderMatch) selectedFolderId = folderMatch[1];
+            
+            const colorMatch = imageUrl.match(/[_-](\d{2,3})[_-]/);
+            if (colorMatch) selectedColorCode = colorMatch[1];
+          }
+
+          navigate(
+            `/quote?productId=${product.id}&colorCode=${selectedColorCode}&folderId=${selectedFolderId}&imageUrl=${encodeURIComponent(
+              imageUrl
+            )}`
+          );
+        }}
+        className="mt-5 w-full"
+        size="lg"
+      >
+        Skapa offert
+      </Button>
     </div>
   );
 };
