@@ -55,11 +55,14 @@ const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }>
           referrerPolicy="no-referrer"
           className="w-full h-full object-contain"
           onError={handleError}
+          loading="lazy"
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 p-2 text-center">
-          Ingen bild
-        </div>
+        <img 
+          src="/placeholder.svg" 
+          alt={label}
+          className="w-full h-full object-contain opacity-50"
+        />
       )}
       <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs py-1 text-center">
         {label}
@@ -149,42 +152,33 @@ const Quote: React.FC = () => {
     );
   }
 
-  // Extract slug from imageUrl
+  // Extract slug and build base URL from imageUrlParam
   const baseImage = decodeURIComponent(imageUrlParam || product.image_url || "");
-  let slug = product.slug_name || "Produkt";
+  const cleanBase = baseImage.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
 
-  // Try underscore format first: /{article}_{color}_{slug}_{View}.jpg
-  const underscoreMatch = baseImage.match(/_\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
-  if (underscoreMatch) {
-    slug = underscoreMatch[1];
-  } else {
-    // Try dash format: /{article}-{color}_{slug}_{View}.jpg
-    const dashMatch = baseImage.match(/-\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
-    if (dashMatch) {
-      slug = dashMatch[1];
-    }
-  }
-
-  // Build angle images based on selected views
+  // Build angle images based on selected views using URL params
   const buildAngleImages = () => {
-    const article = productId || "";
-    const color = product.colorCode || "";
-    const folder = product.folder_id || "";
+    if (!cleanBase) return [];
 
-    if (!article || !color || !folder) return [];
-
-    // Determine format (dash vs underscore)
-    const usesDash = article.includes("-");
-    const basePattern = usesDash
-      ? `https://images.nwgmedia.com/preview/${folder}/${article}-${color}_${slug}`
-      : `https://images.nwgmedia.com/preview/${folder}/${article}_${color}_${slug}`;
+    // Map of views to their short/long suffixes
+    const viewMap = {
+      Front: { short: "F", long: "Front" },
+      Right: { short: "R", long: "Right" },
+      Back: { short: "B", long: "Back" },
+      Left: { short: "L", long: "Left" },
+    };
 
     // Only build images for selected views
-    return selectedViews.map((view) => ({
-      label: view,
-      short: `${basePattern}_${view[0].toUpperCase()}.jpg`,
-      long: `${basePattern}_${view}.jpg`,
-    }));
+    return selectedViews.map((view) => {
+      const suffix = viewMap[view as keyof typeof viewMap];
+      if (!suffix) return null;
+      
+      return {
+        label: view,
+        short: `${cleanBase}_${suffix.short}.jpg`,
+        long: `${cleanBase}_${suffix.long}.jpg`,
+      };
+    }).filter(Boolean);
   };
 
   const angleImages = buildAngleImages();
