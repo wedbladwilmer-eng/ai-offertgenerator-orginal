@@ -6,123 +6,148 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Download, ArrowLeft, X } from "lucide-react";
+import { Download, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { generatePDF } from "@/utils/pdfGenerator";
 import { Product } from "@/hooks/useProducts";
 import kostaNadaProfilLogo from "@/assets/kosta-nada-profil-logo.png";
-import { ProductImageView } from "@/components/ProductImageView";
 
+// 🔹 Liten bildkomponent som försöker kort suffix först, sedan lång.
 const AngleImage = ({ shortUrl, longUrl, label }: { shortUrl: string; longUrl: string; label: string }) => {
   const [src, setSrc] = useState(shortUrl);
-  const [failed, setFailed] = useState(false);
+  const [error, setError] = useState(false);
+
+  if (error) {
+    return (
+      <div className="border rounded-lg flex items-center justify-center h-32 text-sm text-gray-400">Ingen bild</div>
+    );
+  }
 
   return (
-    <div className="relative bg-white border rounded-lg overflow-hidden flex items-center justify-center h-40">
-      {!failed ? (
-        <img
-          src={src}
-          alt={label}
-          className="object-contain w-full h-full"
-          onError={() => {
-            if (src === shortUrl) setSrc(longUrl);
-            else setFailed(true);
-          }}
-        />
-      ) : (
-        <div className="flex items-center justify-center text-gray-400 text-sm h-full">Ingen bild tillgänglig</div>
-      )}
-    </div>
+    <img
+      src={src}
+      alt={label}
+      onError={() => {
+        if (src === shortUrl) setSrc(longUrl);
+        else setError(true);
+      }}
+      className="w-full h-32 object-contain rounded-lg border bg-white p-2"
+    />
   );
 };
 
 const Quote = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  // Läs in valda parametrar (från ProductDisplay)
+  const { toast } = useToast();
+
+  // 🟩 Läs in parametrar från URL
+  const productId = searchParams.get("productId");
   const colorCodeParam = searchParams.get("colorCode");
   const folderIdParam = searchParams.get("folderId");
   const imageUrlParam = searchParams.get("imageUrl");
 
-  const { toast } = useToast();
-
   const [product, setProduct] = useState<Product | null>(null);
-  const [mockupUrl, setMockupUrl] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [customerName, setCustomerName] = useState("");
   const [margin, setMargin] = useState("2");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedViews, setSelectedViews] = useState<string[]>(["Front", "Right", "Back", "Left"]);
 
-  const productId = searchParams.get("productId");
-  const mockupParam = searchParams.get("mockup");
-
-  useEffect(() => {
-    if (productId) fetchProduct();
-    if (mockupParam) setMockupUrl(mockupParam);
-  }, [productId, mockupParam]);
-
-  // 🔹 Hämta produktdata via Supabase Edge Function
+  // 🔹 Hämta produktdata från Edge Function
   const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
     try {
       const { data, error } = await supabase.functions.invoke("new-wave-proxy", {
         body: { articleNumber },
       });
-      if (error) throw new Error(error.message || "Failed to fetch product data");
+      if (error) throw new Error(error.message || "Misslyckades att hämta produktdata");
       if (data.error) throw new Error(data.error);
       return data as Product;
-    } catch (error) {
-      console.error("Error fetching from New Wave API:", error);
-      throw error;
+    } catch (err) {
+      console.error("Error fetching product:", err);
+      return null;
     }
   };
 
-  const fetchProduct = async () => {
-    if (!productId) return;
-    setIsLoading(true);
-    try {
-      const productData = await fetchProductData(productId);
-      if (!productData) {
+  useEffect(() => {
+    const loadProduct = async () => {
+      if (!productId) return;
+      setIsLoading(true);
+
+      try {
+        const data = await fetchProductData(productId);
+        if (!data) throw new Error("Produktdata saknas");
+
+        // 🧠 Uppdatera med färgkod & folder från URL-parametrar
+        if (colorCodeParam) data.colorCode = colorCodeParam;
+        if (folderIdParam) data.folder_id = folderIdParam;
+        if (imageUrlParam) data.image_url = decodeURIComponent(imageUrlParam);
+
+        setProduct(data);
+      } catch (err) {
         toast({
-          title: "Produkt ej hittad",
-          description: `Ingen produkt med artikelnummer ${productId} hittades`,
+          title: "Fel vid hämtning",
+          description: "Kunde inte ladda produktinformationen.",
           variant: "destructive",
         });
-        setProduct(null);
-        return;
+      } finally {
+        setIsLoading(false);
       }
-      setProduct(productData);
-    } catch {
-      toast({
-        title: "Fel",
-        description: "Kunde inte hämta produktinformation från New Wave",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
-  const toggleView = (view: string) => {
-    setSelectedViews((prev) => (prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]));
-  };
+    loadProduct();
+  }, [productId]);
 
   if (isLoading || !product) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">
-          {isLoading ? "Laddar produktinformation..." : "Produktinformation kunde inte laddas"}
-        </p>
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        {isLoading ? "Laddar produkt..." : "Ingen produktdata kunde hämtas"}
       </div>
     );
   }
 
-  const marginMultiplier = parseFloat(margin);
+  // 🧩 Hämta slug_name från bildadressen
+  const baseImage = decodeURIComponent(imageUrlParam || product.image_url || "");
+  const match = baseImage.match(/_\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
+  const slug = match ? match[1] : product.slug_name || "Produkt";
+
+  const folder = folderIdParam || product.folder_id || "";
+  const article = productId || product.id || "";
+  const color = colorCodeParam || product.colorCode || "";
+
+  // 🖼️ Huvudbild
+  const mainImage = `https://images.nwgmedia.com/preview/${folder}/${article}_${color}_${slug}_Front.jpg`;
+
+  // 🔄 4 vinklar
+  const views = [
+    {
+      label: "Front",
+      short: `${folder}/${article}_${color}_${slug}_F.jpg`,
+      long: `${folder}/${article}_${color}_${slug}_Front.jpg`,
+    },
+    {
+      label: "Right",
+      short: `${folder}/${article}_${color}_${slug}_R.jpg`,
+      long: `${folder}/${article}_${color}_${slug}_Right.jpg`,
+    },
+    {
+      label: "Back",
+      short: `${folder}/${article}_${color}_${slug}_B.jpg`,
+      long: `${folder}/${article}_${color}_${slug}_Back.jpg`,
+    },
+    {
+      label: "Left",
+      short: `${folder}/${article}_${color}_${slug}_L.jpg`,
+      long: `${folder}/${article}_${color}_${slug}_Left.jpg`,
+    },
+  ];
+
+  const full = (rel: string) => `https://images.nwgmedia.com/preview/${rel}`;
+
   const basePrice = product.price_ex_vat || 0;
-  const priceWithMargin = basePrice * marginMultiplier;
-  const totalPrice = priceWithMargin * quantity;
+  const total = basePrice * parseFloat(margin) * quantity;
+  const totalWithVat = total * 1.25;
 
   const handleGeneratePDF = async () => {
     if (!customerName.trim()) {
@@ -133,41 +158,27 @@ const Quote = () => {
       });
       return;
     }
+
     setIsGenerating(true);
     try {
       const quoteData = {
-        quote: [{ product, quantity, mockup_url: mockupUrl, selectedViews }],
+        quote: [{ product, quantity }],
         companyName: customerName,
-        customerName,
-        total: totalPrice / 1.25,
-        totalWithVat: totalPrice,
+        total,
+        totalWithVat,
       };
       await generatePDF(quoteData);
-      toast({ title: "Offert skapad!", description: "PDF:en har sparats och laddats ner." });
+      toast({ title: "Offert skapad!", description: "PDF har genererats." });
     } catch {
       toast({
-        title: "Fel vid skapande av offert",
-        description: "Något gick fel. Försök igen.",
+        title: "Fel vid PDF-generering",
+        description: "Försök igen.",
         variant: "destructive",
       });
     } finally {
       setIsGenerating(false);
     }
   };
-
-  // 🧠 Skapa dynamiska bildlänkar utifrån huvudbilden
-  const generateAngleImages = (baseUrl: string) => {
-    if (!baseUrl) return [];
-    const cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
-    return [
-      { label: "front", short: `${cleanBase}_F.jpg`, long: `${cleanBase}_Front.jpg` },
-      { label: "right", short: `${cleanBase}_R.jpg`, long: `${cleanBase}_Right.jpg` },
-      { label: "back", short: `${cleanBase}_B.jpg`, long: `${cleanBase}_Back.jpg` },
-      { label: "left", short: `${cleanBase}_L.jpg`, long: `${cleanBase}_Left.jpg` },
-    ];
-  };
-
-  const angleImages = generateAngleImages(product.image_url || "");
 
   return (
     <div className="min-h-screen bg-background">
@@ -179,126 +190,105 @@ const Quote = () => {
             Tillbaka
           </Button>
           <div className="flex items-center gap-4">
-            <img src={kostaNadaProfilLogo} alt="Kosta Nada Profil AB" className="h-16 w-auto object-contain" />
+            <img src={kostaNadaProfilLogo} alt="Kosta Nada Profil AB" className="h-16 w-auto" />
             <div>
-              <h1 className="text-xl font-bold text-foreground">Kosta Nada Profil AB</h1>
-              <p className="text-sm text-muted-foreground">Professionella produkter med logotyp</p>
+              <h1 className="font-bold text-lg">Kosta Nada Profil AB</h1>
+              <p className="text-sm text-gray-500">Professionella produkter med logotyp</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Quote Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <Card className="bg-white shadow-lg">
-          <CardHeader className="text-center border-b bg-muted/30">
-            <h1 className="text-4xl font-bold text-primary">OFFERT</h1>
-            <div className="flex justify-center gap-8 text-sm text-muted-foreground mt-2">
-              <span>Datum: {new Date().toLocaleDateString("sv-SE")}</span>
-              <span>Offertnummer: OFF-{Date.now().toString().slice(-6)}</span>
-            </div>
+      {/* Content */}
+      <div className="max-w-5xl mx-auto p-8 space-y-8">
+        <Card>
+          <CardHeader className="text-center bg-muted/20 border-b">
+            <h1 className="text-3xl font-bold text-primary">OFFERT</h1>
           </CardHeader>
 
-          <CardContent className="p-8 space-y-8">
+          <CardContent className="space-y-8 p-8">
             {/* Kundinfo */}
-            <div className="bg-muted/30 p-6 rounded-lg grid lg:grid-cols-2 gap-4">
+            <div className="grid lg:grid-cols-2 gap-4 bg-muted/30 p-6 rounded-lg">
               <div>
-                <Label htmlFor="customer-name" className="text-base font-semibold">
-                  Kundnamn *
-                </Label>
+                <Label>Kundnamn *</Label>
                 <Input
-                  id="customer-name"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Ange företag eller kundnamn"
-                  className="mt-2"
+                  placeholder="Ange kundens namn"
                 />
               </div>
               <div>
-                <Label htmlFor="margin-select" className="text-base font-semibold text-orange-600">
-                  Marginal (endast beräkning) *
-                </Label>
+                <Label>Marginal (endast beräkning)</Label>
                 <Select value={margin} onValueChange={setMargin}>
-                  <SelectTrigger className="mt-2">
+                  <SelectTrigger>
                     <SelectValue placeholder="Välj marginal" />
                   </SelectTrigger>
                   <SelectContent>
-                    {[1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((v) => (
-                      <SelectItem key={v} value={v.toString()}>
-                        1:{v}
+                    {[1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((m) => (
+                      <SelectItem key={m} value={m.toString()}>
+                        1:{m}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground mt-1">Detta fält syns inte i PDF:en</p>
+                <p className="text-xs text-gray-500 mt-1">Visas ej i PDF</p>
               </div>
             </div>
 
             <Separator />
 
-            {/* Produktinfo */}
+            {/* Produktinformation */}
             <div>
-              <h2 className="text-xl font-semibold mb-6">Produktinformation</h2>
+              <h2 className="text-xl font-semibold mb-4">Produktinformation</h2>
               <div className="grid lg:grid-cols-2 gap-8">
+                {/* Bildsektion */}
                 <div className="space-y-4">
-                  {/* Huvudbild */}
-                  <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
+                  <div className="border rounded-lg bg-white p-4 flex items-center justify-center">
                     <img
-                      src={mockupUrl || product.image_url || "/placeholder.svg"}
+                      src={mainImage}
                       alt={product.name}
-                      className="max-h-[400px] w-auto object-contain rounded-sm border border-border"
+                      className="max-h-[400px] w-auto object-contain rounded-lg"
                     />
                   </div>
 
-                  {/* Fyra vinklade bilder */}
                   <div>
-                    <h4 className="font-semibold mb-2">🖼️ Produktbilder (vinklar)</h4>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Klicka för att välja vilka vinklar som ska ingå i offerten
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {["Front", "Right", "Back", "Left"].map((view) => (
-                        <ProductImageView
-                          key={view}
-                          view={view}
-                          baseImageUrl={product.image_url || ""}
-                          selected={selectedViews.includes(view)}
-                          onToggle={() => toggleView(view)}
-                        />
+                    <h4 className="font-semibold mb-2">🖼️ Produktvyer</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {views.map((v) => (
+                        <AngleImage key={v.label} label={v.label} shortUrl={full(v.short)} longUrl={full(v.long)} />
                       ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Detaljer */}
+                {/* Produktdetaljer */}
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="font-semibold">Produktnamn</Label>
+                      <Label>Produktnamn</Label>
                       <p className="mt-1">{product.name}</p>
                     </div>
                     <div>
-                      <Label className="font-semibold">Artikelnummer</Label>
+                      <Label>Artikelnummer</Label>
                       <p className="mt-1">{product.id}</p>
                     </div>
                     {product.category && (
                       <div>
-                        <Label className="font-semibold">Kategori</Label>
+                        <Label>Kategori</Label>
                         <p className="mt-1">{product.category}</p>
                       </div>
                     )}
                     <div>
-                      <Label className="font-semibold">Grundpris (inkl. moms)</Label>
-                      <p className="mt-1">{basePrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr</p>
+                      <Label>Grundpris (exkl. moms)</Label>
+                      <p className="mt-1">{basePrice.toFixed(2)} kr</p>
                     </div>
                   </div>
 
-                  <div className="max-w-xs">
-                    <Label htmlFor="quantity">Antal</Label>
+                  <div>
+                    <Label>Antal</Label>
                     <Input
-                      id="quantity"
                       type="number"
-                      min="1"
+                      min={1}
                       value={quantity}
                       onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                     />
@@ -309,55 +299,37 @@ const Quote = () => {
 
             <Separator />
 
-            {/* Priser */}
+            {/* Prisberäkning */}
             <div>
-              <h3 className="text-lg font-semibold mb-4">Prissättning</h3>
-              <div className="overflow-hidden rounded-lg border">
-                <div className="bg-primary text-primary-foreground p-4 grid grid-cols-4 gap-4 font-semibold">
+              <h3 className="text-lg font-semibold mb-3">Prissättning</h3>
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-primary text-primary-foreground grid grid-cols-4 font-semibold p-3">
                   <span>Artikelnummer</span>
-                  <span>Pris/st (inkl. moms)</span>
+                  <span>Pris/st</span>
                   <span>Antal</span>
                   <span>Totalpris</span>
                 </div>
-                <div className="bg-muted/30 p-4 grid grid-cols-4 gap-4">
+                <div className="bg-muted/30 grid grid-cols-4 p-3">
                   <span>{product.id}</span>
-                  <span>{priceWithMargin.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr</span>
+                  <span>{(basePrice * parseFloat(margin)).toFixed(2)} kr</span>
                   <span>{quantity}</span>
-                  <span className="font-semibold">
-                    {totalPrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr
-                  </span>
+                  <span className="font-semibold">{total.toFixed(2)} kr</span>
                 </div>
               </div>
             </div>
 
-            {/* Summering */}
-            <div className="bg-muted/30 p-6 rounded-lg max-w-sm ml-auto">
-              <div className="flex justify-between text-lg font-bold text-primary">
-                <span>TOTALT (inkl. moms):</span>
-                <span>{totalPrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr</span>
+            {/* Totalt */}
+            <div className="bg-muted/30 p-5 rounded-lg max-w-sm ml-auto">
+              <div className="flex justify-between font-semibold text-primary">
+                <span>TOTALT (inkl. moms)</span>
+                <span>{totalWithVat.toFixed(2)} kr</span>
               </div>
             </div>
 
-            {/* Villkor */}
-            <div className="bg-muted/20 p-4 rounded-lg text-sm text-muted-foreground">
-              <h4 className="font-semibold text-foreground mb-2">Villkor och bestämmelser:</h4>
-              <ul className="space-y-1 list-disc list-inside">
-                <li>Offerten gäller i 30 dagar från utställningsdatum</li>
-                <li>Leveranstid: 2–3 veckor från godkänd beställning</li>
-                <li>Betalningsvillkor: 30 dagar netto</li>
-                <li>Alla priser anges inklusive moms där inget annat anges</li>
-              </ul>
-            </div>
-
             {/* PDF-knapp */}
-            <div className="flex justify-center pt-4">
-              <Button
-                onClick={handleGeneratePDF}
-                disabled={isGenerating || !customerName.trim()}
-                size="lg"
-                className="gap-2"
-              >
-                <Download className="h-5 w-5" />
+            <div className="flex justify-center">
+              <Button onClick={handleGeneratePDF} disabled={isGenerating || !customerName.trim()} className="gap-2">
+                <Download className="w-5 h-5" />
                 {isGenerating ? "Skapar PDF..." : "Ladda ner som PDF"}
               </Button>
             </div>
