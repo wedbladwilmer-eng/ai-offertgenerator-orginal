@@ -91,7 +91,7 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
                 <ProductImageView
                   key={view}
                   view={view}
-                  baseImageUrl={product.image_url || ""}
+                  baseImageUrl={(currentImage || product.image_url) ?? ""}
                   selected={selectedViews.includes(view)}
                   onToggle={() => toggleView(view)}
                 />
