@@ -164,9 +164,38 @@ export const generatePDF = async (data: PDFData) => {
   }
 
   // Add selected product angle views if available
-  if (data.selectedViews && data.selectedViews.length > 0) {
-    const baseImageUrl = item.product.image_url || "";
-    const cleanBase = baseImageUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
+  if (item.selectedViews && item.selectedViews.length > 0) {
+    // Extract colorCode, folderId, article, and slug from imageUrl
+    const baseImageUrl = decodeURIComponent(imageUrl || "");
+    
+    // Extract folder_id
+    let folderId = "";
+    const folderMatch = baseImageUrl.match(/\/preview\/(\d{5,6})\//);
+    if (folderMatch) folderId = folderMatch[1];
+    
+    // Extract colorCode
+    let colorCode = "";
+    const colorMatch = baseImageUrl.match(/[_-](\d{2,3})[_-]/);
+    if (colorMatch) colorCode = colorMatch[1];
+    
+    // Extract slug
+    let slug = "Produkt";
+    const underscoreMatch = baseImageUrl.match(/_\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
+    if (underscoreMatch) {
+      slug = underscoreMatch[1];
+    } else {
+      const dashMatch = baseImageUrl.match(/-\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
+      if (dashMatch) {
+        slug = dashMatch[1];
+      }
+    }
+    
+    // Determine format (dash vs underscore)
+    const article = item.product.id || "";
+    const usesDash = article.includes("-");
+    const basePattern = usesDash
+      ? `https://images.nwgmedia.com/preview/${folderId}/${article}-${colorCode}_${slug}`
+      : `https://images.nwgmedia.com/preview/${folderId}/${article}_${colorCode}_${slug}`;
 
     // Add a new page for product angles
     pdf.addPage();
@@ -174,7 +203,7 @@ export const generatePDF = async (data: PDFData) => {
 
     pdf.setFontSize(14);
     pdf.setFont("helvetica", "bold");
-    pdf.text("Produktvinklar", 20, angleYPosition);
+    pdf.text(`Valda vinklar: ${item.selectedViews.join(", ")}`, 20, angleYPosition);
     angleYPosition += 15;
 
     // Display selected views in a grid
@@ -183,12 +212,12 @@ export const generatePDF = async (data: PDFData) => {
     const angleImageHeight = 80;
     const angleGap = 10;
 
-    for (let i = 0; i < data.selectedViews.length; i++) {
-      const view = data.selectedViews[i];
+    for (let i = 0; i < item.selectedViews.length; i++) {
+      const view = item.selectedViews[i];
       
       // Generate URL based on view name (Front, Right, Back, Left)
-      const shortUrl = `${cleanBase}_${view[0].toUpperCase()}.jpg`;
-      const longUrl = `${cleanBase}_${view}.jpg`;
+      const shortUrl = `${basePattern}_${view[0].toUpperCase()}.jpg`;
+      const longUrl = `${basePattern}_${view}.jpg`;
       
       const col = i % angleImagesPerRow;
       const row = Math.floor(i / angleImagesPerRow);
@@ -287,8 +316,10 @@ export const generatePDF = async (data: PDFData) => {
   yPosition += 5;
   pdf.text("• Alla priser anges inklusive moms där inget annat anges", 20, yPosition);
 
-  // Save PDF
-  const fileName = `Offert_${data.companyName.replace(/[^a-zA-Z0-9]/g, "_")}_${quoteNumber}.pdf`;
+  // Save PDF with color code in filename if available
+  const colorCodeMatch = imageUrl?.match(/[_-](\d{2,3})[_-]/);
+  const colorCode = colorCodeMatch ? `_${colorCodeMatch[1]}` : "";
+  const fileName = `Offert_${item.product.name.replace(/[^a-zA-Z0-9]/g, "_")}${colorCode}_${quoteNumber}.pdf`;
   pdf.save(fileName);
 
   // Also upload to Supabase Storage

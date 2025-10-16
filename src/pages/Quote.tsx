@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { generatePDF } from "@/utils/pdfGenerator";
 import { ArrowLeft, Check } from "lucide-react";
 import logo from "@/assets/kosta-nada-profil-logo.png";
+import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
@@ -68,6 +69,7 @@ const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }>
 const Quote: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { toast } = useToast();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -217,7 +219,7 @@ const Quote: React.FC = () => {
           },
           quantity,
           selectedViews: selectedViews,
-          image_url: confirmedData?.imageUrl || mainImage,
+          mockup_url: confirmedData?.imageUrl || mainImage,
         },
       ],
       total,
@@ -226,6 +228,10 @@ const Quote: React.FC = () => {
 
     try {
       await generatePDF(pdfData);
+      toast({
+        title: "PDF skapad!",
+        description: `PDF skapad med vyer: ${selectedViews.join(", ")}`,
+      });
     } catch (err) {
       console.error("Error generating PDF:", err);
       alert("Fel vid generering av PDF");
