@@ -5,13 +5,23 @@ export type ProductImageRow = {
   slug_name: string;
 };
 
-const VIEWS = ["Front", "Right", "Back", "Left"] as const;
-
-export function buildImageUrls(row: ProductImageRow): string[] {
-  const { folder_id, color_code, slug_name } = row;
-  
-  return VIEWS.map(
-    (view) =>
-      `https://images.nwgmedia.com/preview/${folder_id}/${folder_id}-${color_code}_${slug_name}_${view}.jpg`
-  );
+/**
+ * Skapar fyra bild-URL:er utifrån information i tabellen product_images.
+ * Mönster:
+ * https://images.nwgmedia.com/preview/${folder_id}/${article_number}-${color_code}_${slug_name}_Front.jpg
+ * (och Right, Back, Left)
+ */
+export function buildImageUrls({
+  folder_id,
+  article_number,
+  color_code,
+  slug_name,
+}: ProductImageRow): string[] {
+  const base = `https://images.nwgmedia.com/preview/${folder_id}/${article_number}-${color_code}_${slug_name}`;
+  return [
+    `${base}_Front.jpg`,
+    `${base}_Right.jpg`,
+    `${base}_Back.jpg`,
+    `${base}_Left.jpg`,
+  ];
 }
