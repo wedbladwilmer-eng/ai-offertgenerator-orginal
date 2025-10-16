@@ -13,6 +13,29 @@ import { generatePDF } from "@/utils/pdfGenerator";
 import { Product } from "@/hooks/useProducts";
 import kostaNadaProfilLogo from "@/assets/kosta-nada-profil-logo.png";
 
+const AngleImage = ({ shortUrl, longUrl, label }: { shortUrl: string; longUrl: string; label: string }) => {
+  const [src, setSrc] = useState(shortUrl);
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <div className="relative bg-white border rounded-lg overflow-hidden flex items-center justify-center h-40">
+      {!failed ? (
+        <img
+          src={src}
+          alt={label}
+          className="object-contain w-full h-full"
+          onError={() => {
+            if (src === shortUrl) setSrc(longUrl);
+            else setFailed(true);
+          }}
+        />
+      ) : (
+        <div className="flex items-center justify-center text-gray-400 text-sm h-full">Ingen bild tillgänglig</div>
+      )}
+    </div>
+  );
+};
+
 const Quote = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -220,37 +243,13 @@ const Quote = () => {
                     />
                   </div>
 
-                  {/* 🆕 Fyra vinklar */}
+                  {/* Fyra vinklade bilder */}
                   <div>
                     <h4 className="font-semibold mb-2">🖼️ Produktbilder (vinklar)</h4>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {angleImages.map(({ label, short, long }) => {
-                        const [src, setSrc] = useState(short);
-                        const [failed, setFailed] = useState(false);
-
-                        return (
-                          <div
-                            key={label}
-                            className="relative bg-white border rounded-lg overflow-hidden flex items-center justify-center h-40"
-                          >
-                            {!failed ? (
-                              <img
-                                src={src}
-                                alt={label}
-                                className="object-contain w-full h-full"
-                                onError={() => {
-                                  if (src === short) setSrc(long);
-                                  else setFailed(true);
-                                }}
-                              />
-                            ) : (
-                              <div className="flex items-center justify-center text-gray-400 text-sm h-full">
-                                Ingen bild tillgänglig
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                      {angleImages.map(({ label, short, long }) => (
+                        <AngleImage key={label} shortUrl={short} longUrl={long} label={label} />
+                      ))}
                     </div>
                   </div>
                 </div>
