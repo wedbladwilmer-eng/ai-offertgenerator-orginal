@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { generatePDF } from "@/utils/pdfGenerator";
 import { Product } from "@/hooks/useProducts";
 import kostaNadaProfilLogo from "@/assets/kosta-nada-profil-logo.png";
+import { ProductImageView } from "@/components/ProductImageView";
 
 const Quote = () => {
   const [searchParams] = useSearchParams();
@@ -200,40 +201,13 @@ const Quote = () => {
                 <div className="space-y-4">
                   {/* Produktbilder i fyra vinklar */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {["Front", "Right", "Back", "Left"].map((view) => {
-                      const baseUrl = product.image_url || "";
-                      // Remove any existing suffix
-                      const cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
-                      const shortUrl = `${cleanBase}_${view[0].toUpperCase()}.jpg`;
-                      const longUrl = `${cleanBase}_${view}.jpg`;
-
-                      const [src, setSrc] = React.useState(shortUrl);
-                      const [hasError, setHasError] = React.useState(false);
-
-                      return (
-                        <div key={view} className="relative bg-white border rounded-lg overflow-hidden aspect-square flex items-center justify-center">
-                          {!hasError ? (
-                            <img
-                              src={src}
-                              alt={`Produktvy ${view}`}
-                              className="w-full h-full object-contain"
-                              onError={() => {
-                                // Fallback from short (F) to long (Front) variant
-                                if (src !== longUrl) {
-                                  setSrc(longUrl);
-                                } else {
-                                  setHasError(true);
-                                }
-                              }}
-                            />
-                          ) : (
-                            <div className="text-center text-muted-foreground text-xs p-2">
-                              Ingen bild tillgänglig
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {["Front", "Right", "Back", "Left"].map((view) => (
+                      <ProductImageView
+                        key={view}
+                        view={view}
+                        baseImageUrl={product.image_url || ""}
+                      />
+                    ))}
                   </div>
                 </div>
 
