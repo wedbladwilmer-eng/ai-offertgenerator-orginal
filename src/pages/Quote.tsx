@@ -40,6 +40,11 @@ const AngleImage = ({ shortUrl, longUrl, label }: { shortUrl: string; longUrl: s
 const Quote = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  // Läs in valda parametrar (från ProductDisplay)
+  const colorCodeParam = searchParams.get("colorCode");
+  const folderIdParam = searchParams.get("folderId");
+  const imageUrlParam = searchParams.get("imageUrl");
+
   const { toast } = useToast();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -239,26 +244,7 @@ const Quote = () => {
                   {/* Huvudbild */}
                   <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
                     <img
-                      src={(function () {
-                        // Starta från basbilden som kom från produktdata eller mockup
-                        let base = mockupUrl || product.image_url || "/placeholder.svg";
-
-                        // Ta bort eventuell vinkel-suffix (_F, _Front, etc.)
-                        base = base.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
-
-                        // 🟦 Om användaren valt färgkod, byt ut den i bildadressen
-                        if (colorCodeParam) {
-                          base = base.replace(/[_-]\d{2,3}[_-]/, `_${colorCodeParam}_`);
-                        }
-
-                        // 🟩 Om användaren valt folder_id, byt ut den i bildadressen
-                        if (folderIdParam) {
-                          base = base.replace(/\/\d{5,6}\//, `/${folderIdParam}/`);
-                        }
-
-                        // Lägg till prefix för frontbild som standardvy
-                        return `${base}_Front.jpg`;
-                      })()}
+                      src={mockupUrl || product.image_url || "/placeholder.svg"}
                       alt={product.name}
                       className="max-h-[400px] w-auto object-contain rounded-sm border border-border"
                     />
