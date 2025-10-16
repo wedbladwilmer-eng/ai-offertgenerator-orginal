@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Trash2, FileText, X } from "lucide-react";
+import { Trash2, Upload, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import type { QuoteItem } from "@/hooks/useProducts";
+import { LogoUpload } from "./LogoUpload";
 import { generatePDF } from "@/utils/pdfGenerator";
 
 interface QuoteListProps {
@@ -97,10 +98,10 @@ export const QuoteList = ({ quote, onUpdateItem, onRemoveItem, onClearQuote, tot
             {/* Produktinformation */}
             <div className="flex justify-between items-start">
               <div className="flex gap-4 flex-1">
-                {item.product.image_url && (
+                {(item.mockup_url || item.product.image_url) && (
                   <div className="flex-shrink-0">
                     <img
-                      src={item.product.image_url}
+                      src={item.mockup_url || item.product.image_url}
                       alt={item.product.name}
                       className="w-20 h-20 object-cover rounded-lg border"
                       onError={(e) => {
@@ -164,6 +165,19 @@ export const QuoteList = ({ quote, onUpdateItem, onRemoveItem, onClearQuote, tot
                 ))}
               </div>
             </div>
+
+            {/* 🧢 Logouppladdning */}
+            <LogoUpload
+              productId={item.product.id}
+              productImage={item.product.image_url}
+              logoPosition={item.product.logo_position ? JSON.stringify(item.product.logo_position) : undefined}
+              onLogoUploaded={(logoUrl, mockupUrl) =>
+                onUpdateItem(item.product.id, {
+                  logo_url: logoUrl,
+                  mockup_url: mockupUrl,
+                })
+              }
+            />
           </div>
         ))}
 

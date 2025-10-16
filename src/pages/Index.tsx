@@ -1,8 +1,13 @@
+import { useState } from "react";
 import ProductDisplay from "@/components/ProductDisplay";
 import { QuoteList } from "@/components/QuoteList";
+import MockupPreview from "@/components/MockupPreview";
 import { useProducts } from "@/hooks/useProducts";
 
 const Index = () => {
+  const [mockupPreviewUrl, setMockupPreviewUrl] = useState<string | null>(null);
+  const [mockupUrl, setMockupUrl] = useState<string | null>(null);
+
   const {
     isLoading,
     product,
@@ -14,6 +19,11 @@ const Index = () => {
     getQuoteTotal,
     getQuoteTotalWithVat,
   } = useProducts();
+
+  const handlePreviewUpdate = (previewUrl: string | null, finalMockupUrl: string | null) => {
+    setMockupPreviewUrl(previewUrl);
+    setMockupUrl(finalMockupUrl);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -35,7 +45,7 @@ const Index = () => {
             )}
           </div>
 
-          {/* ✅ Höger kolumn: Offertlista */}
+          {/* ✅ Höger kolumn: Offertlista och Preview */}
           <div className="space-y-6">
             <QuoteList
               quote={quote}
@@ -45,6 +55,8 @@ const Index = () => {
               total={getQuoteTotal()}
               totalWithVat={getQuoteTotalWithVat()}
             />
+
+            <MockupPreview previewUrl={mockupPreviewUrl} mockupUrl={mockupUrl} />
           </div>
         </div>
       </div>
