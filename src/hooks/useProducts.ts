@@ -15,8 +15,6 @@ export interface Product {
   variations?: Array<{
     color: string;
     image_url: string;
-    colorCode?: string;
-    folder_id?: string;
   }>;
 }
 

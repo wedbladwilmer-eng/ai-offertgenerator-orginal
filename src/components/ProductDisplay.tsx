@@ -134,15 +134,9 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
       {/* Offertknapp */}
       <Button
         onClick={() => {
-          // Extract colorCode from current image URL
-          const imageUrl = currentImage || "";
-          const urlParts = imageUrl.split("/");
-          const fileName = urlParts[urlParts.length - 1] || "";
-          const fileNameParts = fileName.split("_");
-          const colorCodeFromUrl = fileNameParts[1] || product.colorCode || "";
-          
-          const selectedColorCode = currentVariation?.colorCode || colorCodeFromUrl;
+          const selectedColorCode = currentVariation?.colorCode || product.colorCode || "";
           const selectedFolderId = currentVariation?.folder_id || product.folder_id || "";
+          const imageUrl = currentVariation?.image_url || product.image_url || "";
 
           navigate(
             `/quote?productId=${product.id}&colorCode=${selectedColorCode}&folderId=${selectedFolderId}&imageUrl=${encodeURIComponent(
