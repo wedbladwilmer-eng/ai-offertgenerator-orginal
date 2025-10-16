@@ -32,7 +32,8 @@ export const ProductImageView: React.FC<ProductImageViewProps> = ({ view, baseIm
         />
       ) : (
         <div className="text-center text-muted-foreground text-xs p-2">
-          Ingen bild tillgänglig
+          <div className="font-medium">{view}</div>
+          <div className="text-[10px]">Ingen bild tillgänglig</div>
         </div>
       )}
     </div>
