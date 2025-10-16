@@ -6,14 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Download, ArrowLeft } from "lucide-react";
+import { Download, ArrowLeft, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { generatePDF } from "@/utils/pdfGenerator";
 import { Product } from "@/hooks/useProducts";
 import kostaNadaProfilLogo from "@/assets/kosta-nada-profil-logo.png";
+import { ProductImageView } from "@/components/ProductImageView";
 
-// 🧩 Komponent för att visa och hantera bildvinkel med fallback
 const AngleImage = ({ shortUrl, longUrl, label }: { shortUrl: string; longUrl: string; label: string }) => {
   const [src, setSrc] = useState(shortUrl);
   const [failed, setFailed] = useState(false);
@@ -49,16 +49,15 @@ const Quote = () => {
   const [margin, setMargin] = useState("2");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedViews] = useState<string[]>(["front", "right", "back", "left"]);
+  const [selectedViews, setSelectedViews] = useState<string[]>(["Front", "Right", "Back", "Left"]);
 
   const productId = searchParams.get("productId");
-  const colorCodeParam = searchParams.get("colorCode");
-  const folderIdParam = searchParams.get("folderId");
-  const imageUrlParam = searchParams.get("imageUrl");
+  const mockupParam = searchParams.get("mockup");
 
   useEffect(() => {
     if (productId) fetchProduct();
-  }, [productId]);
+    if (mockupParam) setMockupUrl(mockupParam);
+  }, [productId, mockupParam]);
 
   // 🔹 Hämta produktdata via Supabase Edge Function
   const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
@@ -89,12 +88,6 @@ const Quote = () => {
         setProduct(null);
         return;
       }
-
-      // 🧠 Om färgparametrar finns, uppdatera produktens data lokalt
-      if (colorCodeParam) productData.colorCode = colorCodeParam;
-      if (folderIdParam) productData.folder_id = folderIdParam;
-      if (imageUrlParam) productData.image_url = decodeURIComponent(imageUrlParam);
-
       setProduct(productData);
     } catch {
       toast({
@@ -105,6 +98,12 @@ const Quote = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleView = (view: string) => {
+    setSelectedViews((prev) => 
+      prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]
+    );
   };
 
   if (isLoading || !product) {
@@ -153,27 +152,15 @@ const Quote = () => {
     }
   };
 
-  // 🧩 Bygg upp fyra bildvinklar baserat på den valda färgen
+  // 🧠 Skapa dynamiska bildlänkar utifrån huvudbilden
   const generateAngleImages = (baseUrl: string) => {
     if (!baseUrl) return [];
-
-    let cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
-
-    // 🟦 Byt färgkod om användaren valt en annan
-    if (colorCodeParam) {
-      cleanBase = cleanBase.replace(/[_-]\d{2,3}[_-]/, `_${colorCodeParam}_`);
-    }
-
-    // 🟩 Byt folder_id om annan valts
-    if (folderIdParam) {
-      cleanBase = cleanBase.replace(/\/\d{5,6}\//, `/${folderIdParam}/`);
-    }
-
+    const cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
     return [
-      { label: "Front", short: `${cleanBase}_F.jpg`, long: `${cleanBase}_Front.jpg` },
-      { label: "Right", short: `${cleanBase}_R.jpg`, long: `${cleanBase}_Right.jpg` },
-      { label: "Back", short: `${cleanBase}_B.jpg`, long: `${cleanBase}_Back.jpg` },
-      { label: "Left", short: `${cleanBase}_L.jpg`, long: `${cleanBase}_Left.jpg` },
+      { label: "front", short: `${cleanBase}_F.jpg`, long: `${cleanBase}_Front.jpg` },
+      { label: "right", short: `${cleanBase}_R.jpg`, long: `${cleanBase}_Right.jpg` },
+      { label: "back", short: `${cleanBase}_B.jpg`, long: `${cleanBase}_Back.jpg` },
+      { label: "left", short: `${cleanBase}_L.jpg`, long: `${cleanBase}_Left.jpg` },
     ];
   };
 
@@ -263,9 +250,16 @@ const Quote = () => {
                   {/* Fyra vinklade bilder */}
                   <div>
                     <h4 className="font-semibold mb-2">🖼️ Produktbilder (vinklar)</h4>
+                    <p className="text-xs text-muted-foreground mb-3">Klicka för att välja vilka vinklar som ska ingå i offerten</p>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {angleImages.map(({ label, short, long }) => (
-                        <AngleImage key={label} shortUrl={short} longUrl={long} label={label} />
+                      {["Front", "Right", "Back", "Left"].map((view) => (
+                        <ProductImageView 
+                          key={view} 
+                          view={view} 
+                          baseImageUrl={product.image_url || ""} 
+                          selected={selectedViews.includes(view)}
+                          onToggle={() => toggleView(view)}
+                        />
                       ))}
                     </div>
                   </div>
