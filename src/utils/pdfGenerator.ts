@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import type { QuoteItem } from "@/hooks/useProducts";
 
 interface PDFData {
@@ -13,35 +14,47 @@ interface PDFData {
 export const generatePDF = async (data: PDFData) => {
   const pdf = new jsPDF("p", "mm", "a4");
   const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
 
-  // 🏢 Företagslogotyp och header
+  // Use local logo instead of external URL
   try {
     const logoModule = await import("@/assets/kosta-nada-profil-logo.png");
     const logoUrl = logoModule.default;
 
-    const img = new Image();
-    img.src = logoUrl;
+    const logoImg = document.createElement("img");
+    logoImg.src = logoUrl;
 
     await new Promise((resolve) => {
-      img.onload = resolve;
-      img.onerror = resolve;
+      logoImg.onload = resolve;
+      logoImg.onerror = resolve;
       setTimeout(resolve, 2000);
     });
 
-    if (img.complete && img.naturalHeight > 0) {
-      pdf.addImage(img, "PNG", 20, 15, 20, 20);
+    if (logoImg.complete && logoImg.naturalHeight > 0) {
+      const logoCanvas = await html2canvas(logoImg, {
+        width: 100,
+        height: 100,
+        scale: 1,
+      });
+
+      const logoData = logoCanvas.toDataURL("image/png");
+      pdf.addImage(logoData, "PNG", 20, 15, 20, 20);
     }
   } catch (error) {
-    console.warn("Logo not loaded:", error);
+    console.log("Could not add company logo to PDF:", error);
   }
 
-  pdf.setFont("helvetica", "bold");
+  // Company name next to logo
   pdf.setFontSize(16);
+  pdf.setFont("helvetica", "bold");
   pdf.text("Kosta Nada Profil AB", 45, 25);
 
+  // Header
   pdf.setFontSize(24);
+  pdf.setFont("helvetica", "bold");
   pdf.text("OFFERT", pageWidth / 2, 50, { align: "center" });
 
+  // Date and quote number
   const today = new Date().toLocaleDateString("sv-SE");
   const quoteNumber = `OFF-${Date.now().toString().slice(-6)}`;
 
@@ -50,7 +63,7 @@ export const generatePDF = async (data: PDFData) => {
   pdf.text(`Datum: ${today}`, pageWidth / 2 - 25, 60, { align: "center" });
   pdf.text(`Offertnummer: ${quoteNumber}`, pageWidth / 2 + 25, 60, { align: "center" });
 
-  // 👤 Kundinfo
+  // Customer info
   pdf.setFontSize(12);
   pdf.setFont("helvetica", "bold");
   pdf.text("Kund:", 20, 75);
@@ -59,159 +72,247 @@ export const generatePDF = async (data: PDFData) => {
 
   let yPosition = 100;
 
+  // Product info and mockup image
   const item = data.quote[0];
-  const baseImageUrl = item.product.image_url || "";
-  const cleanBase = baseImageUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
 
-  // 🧩 Hjälpfunktion för att hämta bild via proxy
-  const getImageDataUrl = async (imageUrl: string): Promise<string | null> => {
+  // Function to add an image to PDF
+  const addImageToPDF = async (imageUrl: string, x: number, y: number, width: number, height: number) => {
     try {
-      console.log("Fetching image via proxy:", imageUrl);
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data, error } = await supabase.functions.invoke("image-proxy", {
-        body: { imageUrl }
+      console.log("Adding image to PDF:", imageUrl);
+
+      // Use image proxy for external images
+      const isExternalImage = imageUrl.startsWith("http") && !imageUrl.includes("supabase");
+      let finalImageUrl = imageUrl;
+
+      if (isExternalImage) {
+        console.log("Proxying external image through image-proxy");
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data: proxyData, error: proxyError } = await supabase.functions.invoke("image-proxy", {
+          body: { imageUrl },
+        });
+
+        if (proxyError || !proxyData?.dataUrl) {
+          console.error("Failed to proxy image:", proxyError);
+          throw new Error("Failed to load image");
+        }
+
+        finalImageUrl = proxyData.dataUrl;
+        console.log("Image proxied successfully");
+      }
+
+      const tempDiv = document.createElement("div");
+      tempDiv.style.position = "absolute";
+      tempDiv.style.left = "-9999px";
+      document.body.appendChild(tempDiv);
+
+      const img = document.createElement("img");
+      if (!finalImageUrl.startsWith("data:")) {
+        img.crossOrigin = "anonymous";
+      }
+      img.src = finalImageUrl;
+
+      const container = document.createElement("div");
+      container.style.width = "512px";
+      container.style.height = "512px";
+      container.style.display = "flex";
+      container.style.alignItems = "center";
+      container.style.justifyContent = "center";
+      container.style.backgroundColor = "#ffffff";
+      container.style.border = "1px solid #e5e5e5";
+
+      img.style.maxWidth = "100%";
+      img.style.maxHeight = "100%";
+      img.style.objectFit = "contain";
+
+      container.appendChild(img);
+      tempDiv.appendChild(container);
+
+      await new Promise((resolve) => {
+        img.onload = resolve as any;
+        img.onerror = resolve as any;
+        setTimeout(resolve, 5000);
       });
-      
-      if (error) {
-        console.error("Proxy error:", error);
-        return null;
-      }
-      
-      if (!data?.dataUrl) {
-        console.error("No dataUrl in response");
-        return null;
-      }
-      
-      console.log("Image fetched successfully via proxy");
-      return data.dataUrl;
-    } catch (error) {
-      console.error("Failed to fetch image via proxy:", error);
-      return null;
-    }
-  };
 
-  // 🧩 Hjälpfunktion för att lägga till bild eller placeholder
-  const addImageToPDF = async (imageUrl: string, x: number, y: number, w: number, h: number): Promise<boolean> => {
-    try {
-      const dataUrl = await getImageDataUrl(imageUrl);
-      
-      if (dataUrl) {
-        pdf.addImage(dataUrl, "PNG", x, y, w, h);
+      if (img.complete && img.naturalHeight > 0) {
+        const canvas = await html2canvas(container, {
+          width: 512,
+          height: 512,
+          scale: 1,
+          backgroundColor: "#ffffff",
+        });
+
+        const imgData = canvas.toDataURL("image/png");
+        pdf.addImage(imgData, "PNG", x, y, width, height);
         console.log("Image added to PDF successfully");
-        return true;
+      } else {
+        console.log("Image not loaded properly");
       }
-    } catch (error) {
-      console.error("Failed to add image to PDF:", error);
-    }
 
-    // Placeholder om bilden inte laddas
-    console.log("Drawing placeholder for failed image");
-    pdf.setFillColor(245, 245, 245);
-    pdf.rect(x, y, w, h, "F");
-    pdf.setFontSize(10);
-    pdf.setTextColor(120, 120, 120);
-    pdf.text("Ingen bild", x + w / 2, y + h / 2, { align: "center" });
-    pdf.setTextColor(0, 0, 0);
-    return false;
+      document.body.removeChild(tempDiv);
+      return true;
+    } catch (error) {
+      console.error("Could not add image to PDF:", error);
+      return false;
+    }
   };
 
-  // 🖼️ Rubrik för produktvinklar
-  pdf.addPage();
-  pdf.setFontSize(16);
-  pdf.setFont("helvetica", "bold");
-  pdf.text("Produktvinklar", 20, 25);
+  // Add mockup or product image if available
+  const imageUrl = item.mockup_url || item.product.image_url;
 
-  // 🖼️ Koordinater för 2x2-grid
-  const imageSize = 80;
-  const gap = 10;
+  if (imageUrl) {
+    await addImageToPDF(imageUrl, 20, yPosition, 56, 56);
+  }
+
+  // Always add product angle views in 2x2 grid
+  const baseImageUrl = decodeURIComponent(imageUrl || "");
+  
+  // Extract folder_id
+  let folderId = "";
+  const folderMatch = baseImageUrl.match(/\/preview\/(\d{5,6})\//);
+  if (folderMatch) folderId = folderMatch[1];
+  
+  // Extract colorCode
+  let colorCode = "";
+  const colorMatch = baseImageUrl.match(/[_-](\d{2,3})[_-]/);
+  if (colorMatch) colorCode = colorMatch[1];
+  
+  // Extract slug
+  let slug = "Produkt";
+  const underscoreMatch = baseImageUrl.match(/_\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
+  if (underscoreMatch) {
+    slug = underscoreMatch[1];
+  } else {
+    const dashMatch = baseImageUrl.match(/-\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
+    if (dashMatch) {
+      slug = dashMatch[1];
+    }
+  }
+  
+  // Determine format (dash vs underscore)
+  const article = item.product.id || "";
+  const usesDash = article.includes("-");
+  const basePattern = usesDash
+    ? `https://images.nwgmedia.com/preview/${folderId}/${article}-${colorCode}_${slug}`
+    : `https://images.nwgmedia.com/preview/${folderId}/${article}_${colorCode}_${slug}`;
+
+  // Add a new page for product angles
+  pdf.addPage();
+  
+  pdf.setFontSize(14);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Produktvinklar", 20, 20);
+
+  // Define fixed positions for 2x2 grid
   const positions = [
-    { view: "Front", label: "Framsida", x: 20, y: 40 },
-    { view: "Right", label: "Höger sida", x: 110, y: 40 },
-    { view: "Back", label: "Baksida", x: 20, y: 130 },
-    { view: "Left", label: "Vänster sida", x: 110, y: 130 },
+    { view: "Front", x: 20, y: 35, label: "Framsida" },
+    { view: "Right", x: 115, y: 35, label: "Höger sida" },
+    { view: "Back", x: 20, y: 125, label: "Baksida" },
+    { view: "Left", x: 115, y: 125, label: "Vänster sida" }
   ];
 
-  // 🎨 Rita bilder eller placeholders
-  for (const pos of positions) {
-    const shortUrl = `${cleanBase}_${pos.view[0].toUpperCase()}.jpg`;
-    const longUrl = `${cleanBase}_${pos.view}.jpg`;
+  const imageSize = 80;
 
-    let loaded = await addImageToPDF(shortUrl, pos.x, pos.y, imageSize, imageSize);
-    if (!loaded) {
-      await addImageToPDF(longUrl, pos.x, pos.y, imageSize, imageSize);
+  // Render each view in its fixed position
+  for (const pos of positions) {
+    const shortUrl = `${basePattern}_${pos.view[0].toUpperCase()}.jpg`;
+    const longUrl = `${basePattern}_${pos.view}.jpg`;
+    
+    console.log(`Attempting to load ${pos.view}:`, shortUrl);
+
+    // Try to add image, if both fail, show placeholder
+    let imageAdded = await addImageToPDF(shortUrl, pos.x, pos.y, imageSize, imageSize);
+    if (!imageAdded) {
+      console.log(`Short URL failed, trying long URL:`, longUrl);
+      imageAdded = await addImageToPDF(longUrl, pos.x, pos.y, imageSize, imageSize);
     }
 
-    // Etikett under varje bild
-    pdf.setFontSize(10);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(pos.label, pos.x + imageSize / 2, pos.y + imageSize + 6, { align: "center" });
+    // If image still not added, draw placeholder
+    if (!imageAdded) {
+      console.log(`Both URLs failed for ${pos.view}, drawing placeholder`);
+      
+      // Draw light gray rectangle
+      pdf.setFillColor(240, 240, 240);
+      pdf.setDrawColor(200, 200, 200);
+      pdf.rect(pos.x, pos.y, imageSize, imageSize, "FD");
+      
+      // Add "Ingen bild" text centered
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text("Ingen bild", pos.x + imageSize / 2, pos.y + imageSize / 2, { align: "center" });
+      pdf.setTextColor(0, 0, 0);
+    }
 
-    // Tunn ram runt varje cell
-    pdf.setDrawColor(200, 200, 200);
-    pdf.rect(pos.x, pos.y, imageSize, imageSize);
+    // Add label below image or placeholder
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(pos.label, pos.x + imageSize / 2, pos.y + imageSize + 5, { align: "center" });
   }
 
-  // Flytta ner nästa sektion
-  yPosition = 230;
-
-  // 📦 Produktinfo och pris
-  pdf.setFont("helvetica", "bold");
+  // Product details next to image
   pdf.setFontSize(14);
-  pdf.text(item.product.name, 20, yPosition);
+  pdf.setFont("helvetica", "bold");
+  pdf.text(item.product.name, 110, yPosition + 10);
 
-  yPosition += 10;
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "normal");
-  pdf.text(`Artikelnummer: ${item.product.id}`, 20, yPosition);
+  pdf.text(`Artikelnummer: ${item.product.id}`, 110, yPosition + 20);
   if (item.product.category) {
-    yPosition += 7;
-    pdf.text(`Kategori: ${item.product.category}`, 20, yPosition);
+    pdf.text(`Kategori: ${item.product.category}`, 110, yPosition + 27);
   }
 
-  yPosition += 15;
-  pdf.setFont("helvetica", "bold");
+  yPosition += 95;
+
+  // Pricing table header
   pdf.setFontSize(12);
+  pdf.setFont("helvetica", "bold");
   pdf.text("Prissättning", 20, yPosition);
   yPosition += 10;
 
-  // 🧾 Tabell
+  // Table header with background
   pdf.setFillColor(240, 240, 240);
   pdf.rect(20, yPosition, pageWidth - 40, 8, "F");
+
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "bold");
   pdf.text("Artikelnummer", 25, yPosition + 5);
   pdf.text("Pris/st (inkl. moms)", 70, yPosition + 5);
   pdf.text("Antal", 125, yPosition + 5);
   pdf.text("Totalpris", 150, yPosition + 5);
-  yPosition += 10;
 
-  const price = (item.product.price_ex_vat || 0) * 2;
+  yPosition += 8;
+
+  // Table content
+  pdf.setFont("helvetica", "normal");
+  const price = (item.product.price_ex_vat || 0) * 2; // 1:2 ratio
   const totalPrice = price * item.quantity;
 
-  pdf.setFont("helvetica", "normal");
   pdf.text(item.product.id, 25, yPosition + 5);
   pdf.text(`${price.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr`, 70, yPosition + 5);
   pdf.text(item.quantity.toString(), 125, yPosition + 5);
   pdf.text(`${totalPrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr`, 150, yPosition + 5);
 
-  // 🧮 Total
-  yPosition += 20;
+  yPosition += 15;
+
+  // Total section
+  yPosition += 10;
   pdf.line(20, yPosition, pageWidth - 20, yPosition);
   yPosition += 10;
-  pdf.setFont("helvetica", "bold");
+
   pdf.setFontSize(14);
+  pdf.setFont("helvetica", "bold");
   pdf.text("TOTALT (inkl. moms):", 25, yPosition);
   pdf.text(`${totalPrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr`, 150, yPosition);
 
-  // 📜 Villkor
-  yPosition += 20;
-  pdf.setFont("helvetica", "bold");
+  // Terms
+  yPosition += 25;
+
   pdf.setFontSize(10);
+  pdf.setFont("helvetica", "bold");
   pdf.text("Villkor och bestämmelser:", 20, yPosition);
   yPosition += 7;
 
-  pdf.setFont("helvetica", "normal");
   pdf.setFontSize(9);
+  pdf.setFont("helvetica", "normal");
   pdf.text("• Offerten gäller i 30 dagar från utställningsdatum", 20, yPosition);
   yPosition += 5;
   pdf.text("• Leveranstid: 2-3 veckor från godkänd beställning", 20, yPosition);
@@ -220,21 +321,27 @@ export const generatePDF = async (data: PDFData) => {
   yPosition += 5;
   pdf.text("• Alla priser anges inklusive moms där inget annat anges", 20, yPosition);
 
-  // 💾 Spara PDF lokalt
-  const fileName = `Offert_${data.companyName.replace(/[^a-zA-Z0-9]/g, "_")}_${quoteNumber}.pdf`;
+  // Save PDF with color code in filename if available
+  const colorCodeMatch = imageUrl?.match(/[_-](\d{2,3})[_-]/);
+  const fileColorCode = colorCodeMatch ? `_${colorCodeMatch[1]}` : "";
+  const fileName = `Offert_${item.product.name.replace(/[^a-zA-Z0-9]/g, "_")}${fileColorCode}_${quoteNumber}.pdf`;
   pdf.save(fileName);
 
-  // ☁️ Ladda upp till Supabase
+  // Also upload to Supabase Storage
   try {
     const pdfBlob = pdf.output("blob");
     const { supabase } = await import("@/integrations/supabase/client");
-    const { data: uploadData, error } = await supabase.storage
-      .from("Offers")
-      .upload(fileName, pdfBlob, { contentType: "application/pdf" });
 
-    if (error) console.error("Error uploading PDF:", error);
-    else console.log("PDF uploaded:", uploadData);
+    const { data: uploadData, error } = await supabase.storage.from("Offers").upload(`${fileName}`, pdfBlob, {
+      contentType: "application/pdf",
+    });
+
+    if (error) {
+      console.error("Error uploading PDF to storage:", error);
+    } else {
+      console.log("PDF uploaded to storage:", uploadData);
+    }
   } catch (error) {
-    console.error("Error uploading to Supabase:", error);
+    console.error("Error uploading PDF:", error);
   }
 };

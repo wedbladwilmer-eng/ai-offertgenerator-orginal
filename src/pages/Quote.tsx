@@ -1,350 +1,438 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Download, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { generatePDF } from "@/utils/pdfGenerator";
-import { Product } from "@/hooks/useProducts";
-import kostaNadaProfilLogo from "@/assets/kosta-nada-profil-logo.png";
+import { ArrowLeft, Check } from "lucide-react";
+import logo from "@/assets/kosta-nada-profil-logo.png";
+import { useToast } from "@/hooks/use-toast";
 
-const Quote = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const { toast } = useToast();
+interface Product {
+  id: string;
+  name: string;
+  price_ex_vat: number;
+  category?: string;
+  colorCode?: string;
+  folder_id?: string;
+  image_url?: string;
+  slug_name?: string;
+}
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [mockupUrl, setMockupUrl] = useState<string>("");
-  const [quantity, setQuantity] = useState(1);
-  const [customerName, setCustomerName] = useState("");
-  const [margin, setMargin] = useState("2");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedViews, setSelectedViews] = useState<string[]>(["Front", "Right", "Back", "Left"]);
-
-  const productId = searchParams.get("productId");
-  const mockupParam = searchParams.get("mockup");
+// AngleImage component for handling fallback from short to long view suffix
+const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }> = ({
+  shortUrl,
+  longUrl,
+  label,
+}) => {
+  const [src, setSrc] = useState(shortUrl);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    if (productId) fetchProduct();
-    if (mockupParam) setMockupUrl(mockupParam);
-  }, [productId, mockupParam]);
+    setSrc(shortUrl);
+    setHasError(false);
+  }, [shortUrl]);
 
-  // 🔹 Hämta produktdata via Supabase Edge Function
-  const fetchProductData = async (articleNumber: string): Promise<Product | null> => {
-    try {
-      const { data, error } = await supabase.functions.invoke("new-wave-proxy", {
-        body: { articleNumber },
-      });
-      if (error) throw new Error(error.message || "Failed to fetch product data");
-      if (data.error) throw new Error(data.error);
-      return data as Product;
-    } catch (error) {
-      console.error("Error fetching from New Wave API:", error);
-      throw error;
-    }
-  };
-
-  const fetchProduct = async () => {
-    if (!productId) return;
-    setIsLoading(true);
-    try {
-      const productData = await fetchProductData(productId);
-      if (!productData) {
-        toast({
-          title: "Produkt ej hittad",
-          description: `Ingen produkt med artikelnummer ${productId} hittades`,
-          variant: "destructive",
-        });
-        setProduct(null);
-        return;
-      }
-      setProduct(productData);
-    } catch {
-      toast({
-        title: "Fel",
-        description: "Kunde inte hämta produktinformation från New Wave",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading || !product) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">
-          {isLoading ? "Laddar produktinformation..." : "Produktinformation kunde inte laddas"}
-        </p>
-      </div>
-    );
-  }
-
-  const marginMultiplier = parseFloat(margin);
-  const basePrice = product.price_ex_vat || 0;
-  const priceWithMargin = basePrice * marginMultiplier;
-  const totalPrice = priceWithMargin * quantity;
-
-  const handleGeneratePDF = async () => {
-    if (!customerName.trim()) {
-      toast({
-        title: "Kundnamn saknas",
-        description: "Ange kundnamn innan du skapar offerten.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setIsGenerating(true);
-    try {
-      const quoteData = {
-        quote: [{ product, quantity, mockup_url: mockupUrl, selectedViews }],
-        companyName: customerName,
-        customerName,
-        total: totalPrice / 1.25,
-        totalWithVat: totalPrice,
-        selectedViews,
-      };
-      await generatePDF(quoteData);
-      toast({ title: "Offert skapad!", description: "PDF:en har sparats och laddats ner." });
-    } catch {
-      toast({
-        title: "Fel vid skapande av offert",
-        description: "Något gick fel. Försök igen.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
+  const handleError = () => {
+    if (src === shortUrl) {
+      setSrc(longUrl);
+    } else {
+      setHasError(true);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-white border-b shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/")} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
+    <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden border">
+      {!hasError ? (
+        <img
+          src={src}
+          alt={label}
+          className="w-full h-full object-contain"
+          onError={handleError}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 p-2 text-center">
+          Ingen bild
+        </div>
+      )}
+      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs py-1 text-center">
+        {label}
+      </div>
+    </div>
+  );
+};
+
+const Quote: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { toast } = useToast();
+
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [customerName, setCustomerName] = useState("");
+  const [margin, setMargin] = useState("1.5");
+  const [quantity, setQuantity] = useState(1);
+  const [isColorConfirmed, setIsColorConfirmed] = useState(false);
+  const [confirmedData, setConfirmedData] = useState<{
+    colorCode: string;
+    folderId: string;
+    imageUrl: string;
+  } | null>(null);
+
+  // Read URL parameters
+  const productId = searchParams.get("productId");
+  const colorCodeParam = searchParams.get("colorCode");
+  const folderIdParam = searchParams.get("folderId");
+  const imageUrlParam = searchParams.get("imageUrl");
+  const viewsParam = searchParams.get("views");
+  
+  // Parse selected views from URL or fallback to ["Front"]
+  const selectedViews = viewsParam 
+    ? JSON.parse(decodeURIComponent(viewsParam)) 
+    : ["Front"];
+
+  useEffect(() => {
+    if (!productId) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchProduct = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("new-wave-proxy", {
+          body: { articleNumber: productId },
+        });
+
+        if (error) throw error;
+
+        let productData: Product = data;
+
+        // Override with URL parameters if available
+        if (colorCodeParam) productData.colorCode = colorCodeParam;
+        if (folderIdParam) productData.folder_id = folderIdParam;
+        if (imageUrlParam) productData.image_url = decodeURIComponent(imageUrlParam);
+
+        setProduct(productData);
+      } catch (err) {
+        console.error("Error fetching product:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [productId, colorCodeParam, folderIdParam, imageUrlParam]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-lg">Laddar produkt...</p>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+        <p className="text-lg">Produkt ej hittad</p>
+        <Button onClick={() => navigate("/")}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Tillbaka
+        </Button>
+      </div>
+    );
+  }
+
+  // Extract slug from imageUrl
+  const baseImage = decodeURIComponent(imageUrlParam || product.image_url || "");
+  let slug = product.slug_name || "Produkt";
+
+  // Try underscore format first: /{article}_{color}_{slug}_{View}.jpg
+  const underscoreMatch = baseImage.match(/_\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
+  if (underscoreMatch) {
+    slug = underscoreMatch[1];
+  } else {
+    // Try dash format: /{article}-{color}_{slug}_{View}.jpg
+    const dashMatch = baseImage.match(/-\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
+    if (dashMatch) {
+      slug = dashMatch[1];
+    }
+  }
+
+  // Build angle images based on selected views
+  const buildAngleImages = () => {
+    const article = productId || "";
+    const color = product.colorCode || "";
+    const folder = product.folder_id || "";
+
+    if (!article || !color || !folder) return [];
+
+    // Determine format (dash vs underscore)
+    const usesDash = article.includes("-");
+    const basePattern = usesDash
+      ? `https://images.nwgmedia.com/preview/${folder}/${article}-${color}_${slug}`
+      : `https://images.nwgmedia.com/preview/${folder}/${article}_${color}_${slug}`;
+
+    // Only build images for selected views
+    return selectedViews.map((view) => ({
+      label: view,
+      short: `${basePattern}_${view[0].toUpperCase()}.jpg`,
+      long: `${basePattern}_${view}.jpg`,
+    }));
+  };
+
+  const angleImages = buildAngleImages();
+  const mainImage = baseImage || product.image_url || "";
+
+  const handleConfirmColor = () => {
+    setIsColorConfirmed(true);
+    setConfirmedData({
+      colorCode: product.colorCode || "",
+      folderId: product.folder_id || "",
+      imageUrl: mainImage,
+    });
+  };
+
+  const handleGeneratePDF = async () => {
+    if (!customerName.trim()) {
+      alert("Vänligen fyll i kundnamn");
+      return;
+    }
+
+    const marginValue = parseFloat(margin);
+    const pricePerUnit = product.price_ex_vat * marginValue;
+    const total = pricePerUnit * quantity;
+    const totalWithVat = total * 1.25;
+
+    const pdfData = {
+      companyName: "Kosta Nada",
+      customerName: customerName.trim(),
+      quote: [
+        {
+          product: {
+            ...product,
+            price_ex_vat: pricePerUnit,
+          },
+          quantity,
+          selectedViews: selectedViews,
+          mockup_url: confirmedData?.imageUrl || mainImage,
+        },
+      ],
+      total,
+      totalWithVat,
+    };
+
+    try {
+      await generatePDF(pdfData);
+      toast({
+        title: "PDF skapad!",
+        description: `PDF skapad med vyer: ${selectedViews.join(", ")}`,
+      });
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      alert("Fel vid generering av PDF");
+    }
+  };
+
+  const marginValue = parseFloat(margin);
+  const pricePerUnit = product.price_ex_vat * marginValue;
+  const total = pricePerUnit * quantity;
+  const totalWithVat = total * 1.25;
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container mx-auto max-w-6xl px-4">
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <Button variant="ghost" onClick={() => navigate("/")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Tillbaka
           </Button>
-          <div className="flex items-center gap-4">
-            <img src={kostaNadaProfilLogo} alt="Kosta Nada Profil AB" className="h-16 w-auto object-contain" />
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Kosta Nada Profil AB</h1>
-              <p className="text-sm text-muted-foreground">Professionella produkter med logotyp</p>
-            </div>
-          </div>
+          <img src={logo} alt="Kosta Nada" className="h-12" />
         </div>
-      </div>
 
-      {/* Quote Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <Card className="bg-white shadow-lg">
-          <CardHeader className="text-center border-b bg-muted/30">
-            <h1 className="text-4xl font-bold text-primary">OFFERT</h1>
-            <div className="flex justify-center gap-8 text-sm text-muted-foreground mt-2">
-              <span>Datum: {new Date().toLocaleDateString("sv-SE")}</span>
-              <span>Offertnummer: OFF-{Date.now().toString().slice(-6)}</span>
-            </div>
+        <h1 className="text-3xl font-bold mb-8 text-center">Skapa offert</h1>
+
+        {/* Customer Info */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Kundinformation</CardTitle>
           </CardHeader>
-
-          <CardContent className="p-8 space-y-8">
-            {/* Kundinfo */}
-            <div className="bg-muted/30 p-6 rounded-lg grid lg:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="customer-name" className="text-base font-semibold">
-                  Kundnamn *
-                </Label>
-                <Input
-                  id="customer-name"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Ange företag eller kundnamn"
-                  className="mt-2"
-                />
-              </div>
-              <div>
-                <Label htmlFor="margin-select" className="text-base font-semibold text-orange-600">
-                  Marginal (endast beräkning) *
-                </Label>
-                <Select value={margin} onValueChange={setMargin}>
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Välj marginal" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((v) => (
-                      <SelectItem key={v} value={v.toString()}>
-                        1:{v}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">Detta fält syns inte i PDF:en</p>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Produktinfo */}
+          <CardContent className="grid gap-4 md:grid-cols-2">
             <div>
-              <h2 className="text-xl font-semibold mb-6">Produktinformation</h2>
-              <div className="grid lg:grid-cols-2 gap-8">
-                {/* Bildsektion */}
-                <div className="space-y-4">
-                  {/* Huvudbild */}
-                  <div className="bg-white p-4 rounded-lg border flex items-center justify-center">
-                    <img
-                      src={mockupUrl || product.image_url || "/placeholder.svg"}
-                      alt={product.name}
-                      className="max-h-[400px] w-auto object-contain rounded-sm border border-border"
-                      crossOrigin="anonymous"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
-                    />
-                  </div>
-
-                  {/* 🖼️ Produktbilder (vinklar) */}
-                  <div className="mt-6">
-                    <h4 className="font-semibold mb-2">🖼️ Produktbilder (vinklar)</h4>
-                    {(() => {
-                      const viewsParam = searchParams.get("views");
-                      const selectedViews =
-                        viewsParam && viewsParam !== "undefined"
-                          ? JSON.parse(decodeURIComponent(viewsParam))
-                          : ["Front", "Right", "Back", "Left"];
-                      const baseUrl = decodeURIComponent(searchParams.get("imageUrl") || product.image_url || "");
-                      if (!baseUrl) {
-                        return <p className="text-gray-500 text-sm">Ingen bild tillgänglig</p>;
-                      }
-                      const cleanBase = baseUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
-                      const views = [
-                        { label: "Front", short: `${cleanBase}_F.jpg`, long: `${cleanBase}_Front.jpg` },
-                        { label: "Right", short: `${cleanBase}_R.jpg`, long: `${cleanBase}_Right.jpg` },
-                        { label: "Back", short: `${cleanBase}_B.jpg`, long: `${cleanBase}_Back.jpg` },
-                        { label: "Left", short: `${cleanBase}_L.jpg`, long: `${cleanBase}_Left.jpg` },
-                      ].filter((v) => selectedViews.includes(v.label));
-
-                      return (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2">
-                          {views.map((v) => (
-                            <div
-                              key={v.label}
-                              className="relative flex flex-col items-center justify-center border rounded-lg p-2 bg-white"
-                            >
-                              <img
-                                src={v.short}
-                                alt={v.label}
-                                crossOrigin="anonymous"
-                                referrerPolicy="no-referrer"
-                                className="rounded-lg border object-contain max-h-[150px] w-full"
-                                onError={(e) => {
-                                  e.currentTarget.onerror = null;
-                                  e.currentTarget.src = v.long;
-                                }}
-                              />
-                              <p className="text-xs text-gray-600 mt-2">
-                                {v.label === "Front"
-                                  ? "Framsida"
-                                  : v.label === "Right"
-                                    ? "Höger sida"
-                                    : v.label === "Back"
-                                      ? "Baksida"
-                                      : "Vänster sida"}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                {/* Produktdetaljer */}
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="font-semibold">Produktnamn</Label>
-                      <p className="mt-1">{product.name}</p>
-                    </div>
-                    <div>
-                      <Label className="font-semibold">Artikelnummer</Label>
-                      <p className="mt-1">{product.id}</p>
-                    </div>
-                    {product.category && (
-                      <div>
-                        <Label className="font-semibold">Kategori</Label>
-                        <p className="mt-1">{product.category}</p>
-                      </div>
-                    )}
-                    <div>
-                      <Label className="font-semibold">Grundpris (inkl. moms)</Label>
-                      <p className="mt-1">{basePrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr</p>
-                    </div>
-                  </div>
-                  <div className="max-w-xs">
-                    <Label htmlFor="quantity">Antal</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      min="1"
-                      value={quantity}
-                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    />
-                  </div>
-                </div>
-              </div>
+              <Label htmlFor="customerName">Kundnamn</Label>
+              <Input
+                id="customerName"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Företagsnamn AB"
+              />
             </div>
-
-            <Separator />
-
-            {/* Prissättning */}
             <div>
-              <h3 className="text-lg font-semibold mb-4">Prissättning</h3>
-              <div className="overflow-hidden rounded-lg border">
-                <div className="bg-primary text-primary-foreground p-4 grid grid-cols-4 gap-4 font-semibold">
-                  <span>Artikelnummer</span>
-                  <span>Pris/st (inkl. moms)</span>
-                  <span>Antal</span>
-                  <span>Totalpris</span>
-                </div>
-                <div className="bg-muted/30 p-4 grid grid-cols-4 gap-4">
-                  <span>{product.id}</span>
-                  <span>{priceWithMargin.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr</span>
-                  <span>{quantity}</span>
-                  <span className="font-semibold">
-                    {totalPrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Summering */}
-            <div className="bg-muted/30 p-6 rounded-lg max-w-sm ml-auto">
-              <div className="flex justify-between text-lg font-bold text-primary">
-                <span>TOTALT (inkl. moms):</span>
-                <span>{totalPrice.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr</span>
-              </div>
-            </div>
-
-            {/* PDF-knapp */}
-            <div className="flex justify-center pt-4">
-              <Button
-                onClick={handleGeneratePDF}
-                disabled={isGenerating || !customerName.trim()}
-                size="lg"
-                className="gap-2"
-              >
-                <Download className="h-5 w-5" />
-                {isGenerating ? "Skapar PDF..." : "Ladda ner som PDF"}
-              </Button>
+              <Label htmlFor="margin">Marginal</Label>
+              <Select value={margin} onValueChange={setMargin}>
+                <SelectTrigger id="margin">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1.5">1:1.5</SelectItem>
+                  <SelectItem value="2">1:2</SelectItem>
+                  <SelectItem value="2.5">1:2.5</SelectItem>
+                  <SelectItem value="3">1:3</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
+
+        {/* Product Information */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Produktinformation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Left: Images */}
+              <div>
+                {/* Main Image */}
+                <div className="mb-4 bg-white rounded-lg border p-4">
+                  {mainImage ? (
+                    <img
+                      src={mainImage}
+                      alt={product.name}
+                      className="w-full h-auto max-h-[400px] object-contain rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-full h-[400px] flex items-center justify-center text-gray-400">
+                      Ingen bild tillgänglig
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected Angle Thumbnails */}
+                {angleImages.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Visar valda vinklar: {selectedViews.join(", ")}
+                    </p>
+                    <div className={`grid gap-2 ${
+                      angleImages.length === 1 ? "grid-cols-1" : 
+                      angleImages.length === 2 ? "grid-cols-2" :
+                      "grid-cols-4"
+                    }`}>
+                      {angleImages.map((img) => (
+                        <AngleImage
+                          key={img.label}
+                          shortUrl={img.short}
+                          longUrl={img.long}
+                          label={img.label}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Confirm Color Button */}
+                <Button
+                  onClick={handleConfirmColor}
+                  disabled={isColorConfirmed}
+                  className={`w-full mt-4 ${
+                    isColorConfirmed
+                      ? "bg-green-600 hover:bg-green-700"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                  size="lg"
+                >
+                  {isColorConfirmed ? (
+                    <>
+                      <Check className="mr-2 h-5 w-5" />
+                      Färg bekräftad ✅
+                    </>
+                  ) : (
+                    "Bekräfta färg"
+                  )}
+                </Button>
+              </div>
+
+              {/* Right: Product Details */}
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-2xl font-bold">{product.name}</h2>
+                  <p className="text-sm text-gray-600">Artikelnummer: {product.id}</p>
+                  {product.category && (
+                    <p className="text-sm text-gray-600">Kategori: {product.category}</p>
+                  )}
+                </div>
+
+                <Separator />
+
+                <div>
+                  <p className="text-sm text-gray-600">Grundpris (exkl. moms)</p>
+                  <p className="text-xl font-semibold">{product.price_ex_vat} kr</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="quantity">Antal</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    min="1"
+                    value={quantity}
+                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pricing */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Prissättning</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span>Pris per enhet (med marginal {margin}):</span>
+              <span className="font-semibold">{pricePerUnit.toFixed(2)} kr</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Antal:</span>
+              <span className="font-semibold">{quantity} st</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between text-lg">
+              <span>Totalt (exkl. moms):</span>
+              <span className="font-bold">{total.toFixed(2)} kr</span>
+            </div>
+            <div className="flex justify-between text-lg">
+              <span>Totalt (inkl. moms):</span>
+              <span className="font-bold text-primary">{totalWithVat.toFixed(2)} kr</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Generate PDF Button */}
+        <div className="flex justify-center">
+          <Button
+            onClick={handleGeneratePDF}
+            disabled={!isColorConfirmed}
+            size="lg"
+            className="px-8"
+          >
+            Ladda ner som PDF
+          </Button>
+        </div>
+
+        {!isColorConfirmed && (
+          <p className="text-center text-sm text-gray-500 mt-2">
+            Du måste bekräfta färgen innan du kan skapa PDF
+          </p>
+        )}
       </div>
     </div>
   );
