@@ -163,84 +163,93 @@ export const generatePDF = async (data: PDFData) => {
     await addImageToPDF(imageUrl, 20, yPosition, 56, 56);
   }
 
-  // Add selected product angle views if available
-  if (item.selectedViews && item.selectedViews.length > 0) {
-    // Extract colorCode, folderId, article, and slug from imageUrl
-    const baseImageUrl = decodeURIComponent(imageUrl || "");
-    
-    // Extract folder_id
-    let folderId = "";
-    const folderMatch = baseImageUrl.match(/\/preview\/(\d{5,6})\//);
-    if (folderMatch) folderId = folderMatch[1];
-    
-    // Extract colorCode
-    let colorCode = "";
-    const colorMatch = baseImageUrl.match(/[_-](\d{2,3})[_-]/);
-    if (colorMatch) colorCode = colorMatch[1];
-    
-    // Extract slug
-    let slug = "Produkt";
-    const underscoreMatch = baseImageUrl.match(/_\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
-    if (underscoreMatch) {
-      slug = underscoreMatch[1];
-    } else {
-      const dashMatch = baseImageUrl.match(/-\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
-      if (dashMatch) {
-        slug = dashMatch[1];
-      }
+  // Always add product angle views in 2x2 grid
+  const baseImageUrl = decodeURIComponent(imageUrl || "");
+  
+  // Extract folder_id
+  let folderId = "";
+  const folderMatch = baseImageUrl.match(/\/preview\/(\d{5,6})\//);
+  if (folderMatch) folderId = folderMatch[1];
+  
+  // Extract colorCode
+  let colorCode = "";
+  const colorMatch = baseImageUrl.match(/[_-](\d{2,3})[_-]/);
+  if (colorMatch) colorCode = colorMatch[1];
+  
+  // Extract slug
+  let slug = "Produkt";
+  const underscoreMatch = baseImageUrl.match(/_\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
+  if (underscoreMatch) {
+    slug = underscoreMatch[1];
+  } else {
+    const dashMatch = baseImageUrl.match(/-\d{2,3}_(.*?)_(?:F|B|L|R|Front|Back|Left|Right)\.jpg$/i);
+    if (dashMatch) {
+      slug = dashMatch[1];
     }
+  }
+  
+  // Determine format (dash vs underscore)
+  const article = item.product.id || "";
+  const usesDash = article.includes("-");
+  const basePattern = usesDash
+    ? `https://images.nwgmedia.com/preview/${folderId}/${article}-${colorCode}_${slug}`
+    : `https://images.nwgmedia.com/preview/${folderId}/${article}_${colorCode}_${slug}`;
+
+  // Add a new page for product angles
+  pdf.addPage();
+  let angleYPosition = 20;
+
+  pdf.setFontSize(14);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Produktvinklar", 20, angleYPosition);
+  angleYPosition += 15;
+
+  // Display all four views in a 2x2 grid
+  const allViews = ["Front", "Right", "Back", "Left"];
+  const angleImagesPerRow = 2;
+  const angleImageWidth = 80;
+  const angleImageHeight = 80;
+  const angleGap = 10;
+
+  for (let i = 0; i < allViews.length; i++) {
+    const view = allViews[i];
     
-    // Determine format (dash vs underscore)
-    const article = item.product.id || "";
-    const usesDash = article.includes("-");
-    const basePattern = usesDash
-      ? `https://images.nwgmedia.com/preview/${folderId}/${article}-${colorCode}_${slug}`
-      : `https://images.nwgmedia.com/preview/${folderId}/${article}_${colorCode}_${slug}`;
+    // Generate URL based on view name (Front, Right, Back, Left)
+    const shortUrl = `${basePattern}_${view[0].toUpperCase()}.jpg`;
+    const longUrl = `${basePattern}_${view}.jpg`;
+    
+    const col = i % angleImagesPerRow;
+    const row = Math.floor(i / angleImagesPerRow);
+    const x = 20 + col * (angleImageWidth + angleGap);
+    const y = angleYPosition + row * (angleImageHeight + angleGap + 10);
 
-    // Add a new page for product angles
-    pdf.addPage();
-    let angleYPosition = 20;
-
-    pdf.setFontSize(14);
-    pdf.setFont("helvetica", "bold");
-    pdf.text(`Valda vinklar: ${item.selectedViews.join(", ")}`, 20, angleYPosition);
-    angleYPosition += 15;
-
-    // Display selected views in a grid
-    const angleImagesPerRow = 2;
-    const angleImageWidth = 80;
-    const angleImageHeight = 80;
-    const angleGap = 10;
-
-    for (let i = 0; i < item.selectedViews.length; i++) {
-      const view = item.selectedViews[i];
-      
-      // Generate URL based on view name (Front, Right, Back, Left)
-      const shortUrl = `${basePattern}_${view[0].toUpperCase()}.jpg`;
-      const longUrl = `${basePattern}_${view}.jpg`;
-      
-      const col = i % angleImagesPerRow;
-      const row = Math.floor(i / angleImagesPerRow);
-      const x = 20 + col * (angleImageWidth + angleGap);
-      const y = angleYPosition + row * (angleImageHeight + angleGap + 10);
-
-      // Try short URL first, then long URL
-      let imageAdded = await addImageToPDF(shortUrl, x, y, angleImageWidth, angleImageHeight);
-      if (!imageAdded) {
-        imageAdded = await addImageToPDF(longUrl, x, y, angleImageWidth, angleImageHeight);
-      }
-
-      // Add label below image
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "normal");
-      const labels: Record<string, string> = {
-        Front: "Framsida",
-        Right: "Höger sida",
-        Back: "Baksida",
-        Left: "Vänster sida"
-      };
-      pdf.text(labels[view] || view, x + angleImageWidth / 2, y + angleImageHeight + 5, { align: "center" });
+    // Try to add image, if both fail, show placeholder
+    let imageAdded = await addImageToPDF(shortUrl, x, y, angleImageWidth, angleImageHeight);
+    if (!imageAdded) {
+      imageAdded = await addImageToPDF(longUrl, x, y, angleImageWidth, angleImageHeight);
     }
+
+    // If image still not added, draw placeholder
+    if (!imageAdded) {
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(x, y, angleImageWidth, angleImageHeight, "F");
+      
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text("Ingen bild", x + angleImageWidth / 2, y + angleImageHeight / 2, { align: "center" });
+      pdf.setTextColor(0, 0, 0);
+    }
+
+    // Add label below image or placeholder
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "normal");
+    const labels: Record<string, string> = {
+      Front: "Framsida",
+      Right: "Höger sida",
+      Back: "Baksida",
+      Left: "Vänster sida"
+    };
+    pdf.text(labels[view] || view, x + angleImageWidth / 2, y + angleImageHeight + 5, { align: "center" });
   }
 
   // Product details next to image
@@ -318,8 +327,8 @@ export const generatePDF = async (data: PDFData) => {
 
   // Save PDF with color code in filename if available
   const colorCodeMatch = imageUrl?.match(/[_-](\d{2,3})[_-]/);
-  const colorCode = colorCodeMatch ? `_${colorCodeMatch[1]}` : "";
-  const fileName = `Offert_${item.product.name.replace(/[^a-zA-Z0-9]/g, "_")}${colorCode}_${quoteNumber}.pdf`;
+  const fileColorCode = colorCodeMatch ? `_${colorCodeMatch[1]}` : "";
+  const fileName = `Offert_${item.product.name.replace(/[^a-zA-Z0-9]/g, "_")}${fileColorCode}_${quoteNumber}.pdf`;
   pdf.save(fileName);
 
   // Also upload to Supabase Storage
