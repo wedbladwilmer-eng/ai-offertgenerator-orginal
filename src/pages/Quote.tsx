@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import React, { useState, useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { supabase } from "@/integrations/supabase/client";
 import { generatePDF } from "@/utils/pdfGenerator";
 import { ArrowLeft, Check } from "lucide-react";
 import logo from "@/assets/kosta-nada-profil-logo.png";
@@ -24,6 +23,13 @@ interface Product {
   slug_name?: string;
   pictures?: Record<string, string>;
   angle_images?: Record<string, string>;
+  variations?: Array<{
+    color: string;
+    image_url: string;
+    colorCode?: string;
+    folder_id?: string;
+    articleNumber?: string;
+  }>;
 }
 
 const AngleImage: React.FC<{ url: string; label: string }> = ({ url, label }) => {
@@ -53,78 +59,21 @@ const AngleImage: React.FC<{ url: string; label: string }> = ({ url, label }) =>
 
 const Quote: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { toast } = useToast();
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
+  // 🎯 Hämta produktdata direkt från navigate state
+  const productData = location.state?.product;
+  const selectedColorCode = location.state?.selectedColorCode;
+  const selectedFolderId = location.state?.selectedFolderId;
+  const selectedViews = location.state?.selectedViews || ["Front"];
+  const currentImage = location.state?.currentImage;
+  const currentVariation = location.state?.currentVariation;
+
+  const [product] = useState<Product | null>(productData || null);
   const [customerName, setCustomerName] = useState("");
   const [margin, setMargin] = useState("1.5");
   const [quantity, setQuantity] = useState(1);
-  const [isColorConfirmed, setIsColorConfirmed] = useState(false);
-
-  // Läs parametrar
-  const productId = searchParams.get("productId");
-  const colorCodeParam = searchParams.get("colorCode");
-  const folderIdParam = searchParams.get("folderId");
-  const slugParam = searchParams.get("slug");
-  const viewsParam = searchParams.get("views");
-
-  // Läs valda vinklar
-  const selectedViews = viewsParam ? JSON.parse(decodeURIComponent(viewsParam)) : ["Front"];
-
-  useEffect(() => {
-    if (!productId) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchProduct = async () => {
-      try {
-        // 🎯 Hämta alltid basartikeln (New Wave API accepterar inte färgkod i artikelnummer)
-        const { data, error } = await supabase.functions.invoke("new-wave-proxy", {
-          body: { articleNumber: productId },
-        });
-
-        if (error) throw error;
-
-        let productData: Product = data;
-
-        // 🎨 Om colorCode finns, hitta rätt variation och använd dess data
-        if (colorCodeParam && data.variations) {
-          const matchingVariation = data.variations.find(
-            (v: any) => v.colorCode === colorCodeParam
-          );
-          
-          if (matchingVariation) {
-            console.log("✅ Hittade variation:", matchingVariation);
-            // Uppdatera produktdata med variationens bild och artikelnummer
-            productData.image_url = matchingVariation.image_url;
-            productData.id = matchingVariation.articleNumber;
-            
-            // Extrahera folderId från variationens image_url
-            const folderMatch = matchingVariation.image_url.match(/preview\/(\d+)\//);
-            if (folderMatch) {
-              productData.folder_id = folderMatch[1];
-            }
-          }
-        }
-
-        // Lägg till färg och mapp från URL om de finns
-        if (colorCodeParam) productData.colorCode = colorCodeParam;
-        if (folderIdParam) productData.folder_id = folderIdParam;
-        if (slugParam) productData.slug_name = slugParam;
-
-        setProduct(productData);
-      } catch (err) {
-        console.error("Error fetching product:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProduct();
-  }, [productId, colorCodeParam, folderIdParam, slugParam]);
 
   // 🧠 Bildlogik - måste vara före early returns för hook-regler
   const angleImages = useMemo(() => {
@@ -152,10 +101,10 @@ const Quote: React.FC = () => {
     }
     
     // 🎯 PRIO 3: Fallback till generateAngleImages
-    const folderId = folderIdParam || product.folder_id || "";
-    const articleNumber = product.id || productId || "";
-    const colorCode = colorCodeParam || product.colorCode || "";
-    const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
+    const folderId = selectedFolderId || product.folder_id || "";
+    const articleNumber = product.id || "";
+    const colorCode = selectedColorCode || product.colorCode || "";
+    const slug = product.slug_name || (product.name || "").replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
     
     console.log("✅ Parametrar till generateAngleImages:", { folderId, articleNumber, colorCode, slug, selectedViews });
     
@@ -163,25 +112,18 @@ const Quote: React.FC = () => {
       label: img.label,
       url: img.short,
     }));
-  }, [product, selectedViews, folderIdParam, colorCodeParam, slugParam, productId]);
+  }, [product, selectedViews, selectedFolderId, selectedColorCode]);
 
-  // 🖼️ Huvudbild - prioritera front från angleImages
-  const mainImage = angleImages.find((img) => img.label.toLowerCase() === "front")?.url || product?.image_url || "";
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Laddar produkt...</p>
-      </div>
-    );
-  }
+  // 🖼️ Huvudbild - prioritera front från angleImages, annars currentImage från state
+  const mainImage = angleImages.find((img) => img.label.toLowerCase() === "front")?.url || currentImage || product?.image_url || "";
 
   if (!product) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p>Produkt ej hittad</p>
+        <p className="text-lg font-semibold">Ingen produkt vald</p>
+        <p className="text-gray-600">Gå tillbaka till startsidan och välj en produkt.</p>
         <Button onClick={() => navigate("/")}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Tillbaka
+          <ArrowLeft className="mr-2 h-4 w-4" /> Tillbaka till startsidan
         </Button>
       </div>
     );
@@ -199,11 +141,6 @@ const Quote: React.FC = () => {
       toast({ title: "Fel", description: "Ange kundnamn", variant: "destructive" });
       return;
     }
-
-    // Define these again for the PDF generation scope
-    const folderId = folderIdParam || product.folder_id || "";
-    const colorCode = colorCodeParam || product.colorCode || "";
-    const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "");
 
     try {
       await generatePDF({

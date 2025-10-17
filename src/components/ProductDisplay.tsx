@@ -34,6 +34,19 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
     setCurrentIndex((prev) => (prev === 0 ? variations.length - 1 : prev - 1));
   };
 
+  const handleCreateQuote = () => {
+    navigate("/quote", {
+      state: {
+        product,
+        selectedColorCode: currentVariation?.colorCode || product.colorCode,
+        selectedFolderId: currentVariation?.folder_id || product.folder_id,
+        selectedViews,
+        currentImage,
+        currentVariation,
+      },
+    });
+  };
+
   // Swipe
   let touchStartX = 0;
   let touchEndX = 0;
@@ -57,27 +70,6 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
     setSelectedViews((prev) => (prev.includes(view) ? prev.filter((v) => v !== view) : [...prev, view]));
   };
 
-  // Extract image parameters from current image URL
-  const extractImageParams = () => {
-    const imageUrl = currentImage || product.image_url || "";
-    let folderId = product.folder_id || "";
-    let colorCode = product.colorCode || "";
-    let slug = (product.name || "").replace(/\s+/g, "");
-
-    // Extract from URL if not in product data
-    if (imageUrl) {
-      const folderMatch = imageUrl.match(/\/preview\/(\d{5,6})\//);
-      if (folderMatch) folderId = folderMatch[1];
-
-      const colorMatch = imageUrl.match(/[_-](\d{2,3})[_-]/);
-      if (colorMatch) colorCode = colorMatch[1];
-
-      const slugMatch = imageUrl.match(/\d{2,3}_([^_]+)_[FRLB]/i);
-      if (slugMatch) slug = slugMatch[1];
-    }
-
-    return { folderId, colorCode, slug };
-  };
 
   return (
     <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg text-center overflow-visible relative">
@@ -156,13 +148,7 @@ const ProductDisplay: React.FC<ProductDisplayProps> = ({ product, onAddToQuote }
 
       {/* Skapa offert button */}
       <Button
-        onClick={() => {
-          const { folderId, colorCode, slug } = extractImageParams();
-          
-          navigate(
-            `/quote?productId=${product.id}&colorCode=${colorCode}&folderId=${folderId}&slug=${slug}&views=${encodeURIComponent(JSON.stringify(selectedViews))}`
-          );
-        }}
+        onClick={handleCreateQuote}
         className="mt-5 w-full"
         size="lg"
       >
