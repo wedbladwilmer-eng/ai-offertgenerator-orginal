@@ -34,6 +34,7 @@ const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }>
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
+    if (!shortUrl) return;
     setSrc(shortUrl);
     setHasError(false);
   }, [shortUrl]);
@@ -155,11 +156,20 @@ const Quote: React.FC = () => {
   // Build angle images using generateAngleImages function
   const folderId = folderIdParam || product.folder_id || "";
   const colorCode = colorCodeParam || product.colorCode || "";
-  const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "");
+  const articleNumber = product.id || productId || "";
+  const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
+  
+  console.log("✅ Parametrar till generateAngleImages:", {
+    folderId,
+    articleNumber,
+    colorCode,
+    slug,
+    selectedViews,
+  });
   
   const angleImages = generateAngleImages(
     folderId,
-    productId || "",
+    articleNumber,
     colorCode,
     slug,
     selectedViews
