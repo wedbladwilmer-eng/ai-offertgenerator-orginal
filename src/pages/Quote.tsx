@@ -81,18 +81,36 @@ const Quote: React.FC = () => {
 
     const fetchProduct = async () => {
       try {
-        // 🎨 Begär rätt färgvariant om colorCode finns
-        const requestedArticle = colorCodeParam ? `${productId}-${colorCodeParam}` : productId;
-        
+        // 🎯 Hämta alltid basartikeln (New Wave API accepterar inte färgkod i artikelnummer)
         const { data, error } = await supabase.functions.invoke("new-wave-proxy", {
-          body: { articleNumber: requestedArticle },
+          body: { articleNumber: productId },
         });
 
         if (error) throw error;
 
         let productData: Product = data;
 
-        // Tvinga in färg och mapp från URL
+        // 🎨 Om colorCode finns, hitta rätt variation och använd dess data
+        if (colorCodeParam && data.variations) {
+          const matchingVariation = data.variations.find(
+            (v: any) => v.colorCode === colorCodeParam
+          );
+          
+          if (matchingVariation) {
+            console.log("✅ Hittade variation:", matchingVariation);
+            // Uppdatera produktdata med variationens bild och artikelnummer
+            productData.image_url = matchingVariation.image_url;
+            productData.id = matchingVariation.articleNumber;
+            
+            // Extrahera folderId från variationens image_url
+            const folderMatch = matchingVariation.image_url.match(/preview\/(\d+)\//);
+            if (folderMatch) {
+              productData.folder_id = folderMatch[1];
+            }
+          }
+        }
+
+        // Lägg till färg och mapp från URL om de finns
         if (colorCodeParam) productData.colorCode = colorCodeParam;
         if (folderIdParam) productData.folder_id = folderIdParam;
         if (slugParam) productData.slug_name = slugParam;
