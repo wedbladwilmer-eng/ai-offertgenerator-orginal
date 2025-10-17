@@ -2,24 +2,16 @@
  * Bygger dynamiska bild-URL:er (Front, Right, Back, Left)
  * för New Wave Group-produkter enligt strukturen:
  * https://images.nwgmedia.com/preview/{folder_id}/{article_number}_{color_code}_{slug}_{view}.jpg
- *
- * Denna funktion används både i ProductDisplay.tsx och Quote.tsx
- * för att garantera att samma logik används överallt.
  */
 
 export interface AngleImage {
   label: "Front" | "Right" | "Back" | "Left";
-  short: string; // _F, _R, _B, _L
-  long: string; // _Front, _Right, _Back, _Left
+  short: string;
+  long: string;
 }
 
 /**
- * Genererar bild-URLs baserat på New Wave Group-strukturen
- * @param folderId - Mapp-ID (t.ex. "96495")
- * @param articleNumber - Artikelnummer (t.ex. "032101")
- * @param colorCode - Färgkod (t.ex. "99")
- * @param slug - Produktnamn utan mellanslag (t.ex. "HotpantsKids")
- * @param selectedViews - Vilka vinklar som ska genereras
+ * Genererar bild-URLs baserat på NWG-strukturen
  */
 export const generateAngleImages = (
   folderId: string,
@@ -28,9 +20,20 @@ export const generateAngleImages = (
   slug: string,
   selectedViews: string[] = ["Front", "Right", "Back", "Left"],
 ): AngleImage[] => {
-  if (!folderId || !articleNumber || !colorCode || !slug) return [];
+  if (!folderId || !articleNumber || !colorCode || !slug) {
+    console.warn("⚠️ Saknas parameter i generateAngleImages:", {
+      folderId,
+      articleNumber,
+      colorCode,
+      slug,
+    });
+    return [];
+  }
 
-  const base = `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slug}`;
+  // Ta bort ogiltiga tecken från slug
+  const cleanSlug = slug.replace(/[^a-zA-Z0-9]/g, "");
+
+  const base = `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${cleanSlug}`;
 
   const allViews: AngleImage[] = [
     { label: "Front", short: `${base}_F.jpg`, long: `${base}_Front.jpg` },
@@ -39,18 +42,27 @@ export const generateAngleImages = (
     { label: "Left", short: `${base}_L.jpg`, long: `${base}_Left.jpg` },
   ];
 
+  console.groupCollapsed("🖼️ Genererade bildlänkar");
+  console.table(allViews);
+  console.groupEnd();
+
   return allViews.filter((v) => selectedViews.includes(v.label));
 };
 
 /**
- * Returnerar svenska översättningar för vyetiketter
+ * Svenska etiketter
  */
 export const getViewLabelInSwedish = (view: string): string => {
   switch (view) {
-    case "Front": return "Framsida";
-    case "Right": return "Höger sida";
-    case "Back": return "Baksida";
-    case "Left": return "Vänster sida";
-    default: return view;
+    case "Front":
+      return "Framsida";
+    case "Right":
+      return "Höger sida";
+    case "Back":
+      return "Baksida";
+    case "Left":
+      return "Vänster sida";
+    default:
+      return view;
   }
 };
