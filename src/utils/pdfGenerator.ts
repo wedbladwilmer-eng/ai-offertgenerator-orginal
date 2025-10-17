@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { QuoteItem } from "@/hooks/useProducts";
+import { generateAngleImages, getViewLabelInSwedish } from "@/lib/generateAngleImages";
 
 interface PDFData {
   quote: QuoteItem[];
@@ -9,6 +10,9 @@ interface PDFData {
   total: number;
   totalWithVat: number;
   selectedViews?: string[];
+  folderId?: string;
+  colorCode?: string;
+  slug?: string;
 }
 
 export const generatePDF = async (data: PDFData) => {
@@ -117,7 +121,7 @@ export const generatePDF = async (data: PDFData) => {
       container.style.display = "flex";
       container.style.alignItems = "center";
       container.style.justifyContent = "center";
-      container.style.backgroundColor = "#ffffff";
+      container.style.backgroundColor = "transparent";
       container.style.border = "1px solid #e5e5e5";
 
       img.style.maxWidth = "100%";
@@ -138,7 +142,7 @@ export const generatePDF = async (data: PDFData) => {
           width: 512,
           height: 512,
           scale: 1,
-          backgroundColor: "#ffffff",
+          backgroundColor: null,
         });
 
         const imgData = canvas.toDataURL("image/png");
@@ -163,11 +167,17 @@ export const generatePDF = async (data: PDFData) => {
     await addImageToPDF(imageUrl, 20, yPosition, 56, 56);
   }
 
-  // Always add product angle views in 2x2 grid
-  const baseImageUrl = decodeURIComponent(imageUrl || "");
+  // Always add product angle views in 2x2 grid using generateAngleImages
+  const selectedViews = data.selectedViews || ["Front", "Right", "Back", "Left"];
   
-  // Remove any existing suffix from the base URL (same as Quote page logic)
-  const cleanBase = baseImageUrl.replace(/_(F|B|L|R|Front|Back|Left|Right)\.jpg$/i, "");
+  // Use generateAngleImages to build correct URLs
+  const angleImages = generateAngleImages(
+    data.folderId || "",
+    item.product.id,
+    data.colorCode || "",
+    data.slug || "",
+    selectedViews
+  );
 
   // Add a new page for product angles
   pdf.addPage();
@@ -178,49 +188,42 @@ export const generatePDF = async (data: PDFData) => {
 
   // Define fixed positions for 2x2 grid
   const positions = [
-    { view: "Front", x: 20, y: 35, label: "Framsida" },
-    { view: "Right", x: 115, y: 35, label: "Höger sida" },
-    { view: "Back", x: 20, y: 125, label: "Baksida" },
-    { view: "Left", x: 115, y: 125, label: "Vänster sida" }
+    { view: "Front", x: 20, y: 35 },
+    { view: "Right", x: 115, y: 35 },
+    { view: "Back", x: 20, y: 125 },
+    { view: "Left", x: 115, y: 125 }
   ];
 
   const imageSize = 80;
 
-  // Render each view in its fixed position
+  // Render each selected view in its fixed position
   for (const pos of positions) {
-    // Build URLs using clean base (same as Quote page)
-    const shortUrl = `${cleanBase}_${pos.view[0].toUpperCase()}.jpg`;
-    const longUrl = `${cleanBase}_${pos.view}.jpg`;
+    // Find the corresponding angle image
+    const angleImage = angleImages.find(img => img.label === pos.view);
     
-    console.log(`Attempting to load ${pos.view}:`, shortUrl);
+    if (!angleImage) {
+      // View not selected, skip it (transparent)
+      continue;
+    }
+    
+    console.log(`Attempting to load ${pos.view}:`, angleImage.short);
 
-    // Try to add image, if both fail, show placeholder
-    let imageAdded = await addImageToPDF(shortUrl, pos.x, pos.y, imageSize, imageSize);
+    // Try to add image, if both fail, leave transparent
+    let imageAdded = await addImageToPDF(angleImage.short, pos.x, pos.y, imageSize, imageSize);
     if (!imageAdded) {
-      console.log(`Short URL failed, trying long URL:`, longUrl);
-      imageAdded = await addImageToPDF(longUrl, pos.x, pos.y, imageSize, imageSize);
+      console.log(`Short URL failed, trying long URL:`, angleImage.long);
+      imageAdded = await addImageToPDF(angleImage.long, pos.x, pos.y, imageSize, imageSize);
     }
 
-    // If image still not added, draw placeholder
+    // If image still not added, it stays transparent (no placeholder)
     if (!imageAdded) {
-      console.log(`Both URLs failed for ${pos.view}, drawing placeholder`);
-      
-      // Draw light gray rectangle
-      pdf.setFillColor(240, 240, 240);
-      pdf.setDrawColor(200, 200, 200);
-      pdf.rect(pos.x, pos.y, imageSize, imageSize, "FD");
-      
-      // Add "Ingen bild" text centered
-      pdf.setFontSize(10);
-      pdf.setTextColor(100, 100, 100);
-      pdf.text("Ingen bild", pos.x + imageSize / 2, pos.y + imageSize / 2, { align: "center" });
-      pdf.setTextColor(0, 0, 0);
+      console.log(`Both URLs failed for ${pos.view}, leaving transparent`);
     }
 
-    // Add label below image or placeholder
+    // Add label below image (only if view was selected)
     pdf.setFontSize(9);
     pdf.setFont("helvetica", "normal");
-    pdf.text(pos.label, pos.x + imageSize / 2, pos.y + imageSize + 5, { align: "center" });
+    pdf.text(getViewLabelInSwedish(pos.view), pos.x + imageSize / 2, pos.y + imageSize + 5, { align: "center" });
   }
 
   // Product details next to image

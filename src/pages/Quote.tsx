@@ -206,6 +206,10 @@ const Quote: React.FC = () => {
       ],
       total,
       totalWithVat,
+      selectedViews: selectedViews,
+      folderId: folderId,
+      colorCode: colorCode,
+      slug: slug,
     };
 
     try {
