@@ -38,17 +38,10 @@ const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }>
     setHasError(false);
   }, [shortUrl]);
 
-  const handleLoad = () => {
-    console.log(`✅ Bild laddad: ${src} (${label})`);
-  };
-
   const handleError = () => {
     if (src === shortUrl) {
-      console.warn(`⚠️ Misslyckades ladda ${label}: ${shortUrl}`);
-      console.log(`🔄 Försöker fallback: ${longUrl}`);
       setSrc(longUrl);
-    } else if (src === longUrl) {
-      console.error(`❌ Båda försöken misslyckades för ${label}, visar placeholder`);
+    } else {
       setHasError(true);
     }
   };
@@ -62,7 +55,6 @@ const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }>
           className="w-full h-full object-contain"
           crossOrigin="anonymous"
           referrerPolicy="no-referrer"
-          onLoad={handleLoad}
           onError={handleError}
         />
       ) : (
@@ -107,16 +99,6 @@ const Quote: React.FC = () => {
   const selectedViews = viewsParam 
     ? JSON.parse(decodeURIComponent(viewsParam)) 
     : ["Front"];
-
-  // 🧩 Logga URL-parametrar
-  console.log("🔍 URL-parametrar från Quote-sidan:", {
-    productId,
-    colorCodeParam,
-    folderIdParam,
-    slugParam: slugParam ? decodeURIComponent(slugParam) : null,
-    viewsParam,
-    selectedViews,
-  });
 
   useEffect(() => {
     if (!productId) {
@@ -173,17 +155,7 @@ const Quote: React.FC = () => {
   // Build angle images using generateAngleImages function
   const folderId = folderIdParam || product.folder_id || "";
   const colorCode = colorCodeParam || product.colorCode || "";
-  // 🧩 Rensa mellanslag från slug efter dekodning
-  const rawSlug = slugParam || product.slug_name || product.name || "";
-  const slug = decodeURIComponent(rawSlug).replace(/\s+/g, "");
-  
-  console.log("✅ Params till generateAngleImages:", {
-    folderId,
-    articleNumber: productId,
-    colorCode,
-    slug,
-    selectedViews,
-  });
+  const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "");
   
   const angleImages = generateAngleImages(
     folderId,
@@ -192,8 +164,6 @@ const Quote: React.FC = () => {
     slug,
     selectedViews
   );
-  
-  console.log(`✅ angleImages genererade: ${angleImages.length} bilder`, angleImages);
   
   // Build main image URL
   const mainImage = angleImages.length > 0 

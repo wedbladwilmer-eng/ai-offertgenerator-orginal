@@ -28,24 +28,7 @@ export const generateAngleImages = (
   slug: string,
   selectedViews: string[] = ["Front", "Right", "Back", "Left"],
 ): AngleImage[] => {
-  // 🧩 Logga inkommande parametrar
-  console.log("🖼️ generateAngleImages() anropad med:", {
-    folderId,
-    articleNumber,
-    colorCode,
-    slug,
-    selectedViews,
-  });
-
-  if (!folderId || !articleNumber || !colorCode || !slug) {
-    console.warn("⚠️ Saknas parameter i generateAngleImages:", {
-      folderId,
-      articleNumber,
-      colorCode,
-      slug,
-    });
-    return [];
-  }
+  if (!folderId || !articleNumber || !colorCode || !slug) return [];
 
   const base = `https://images.nwgmedia.com/preview/${folderId}/${articleNumber}_${colorCode}_${slug}`;
 
@@ -56,15 +39,7 @@ export const generateAngleImages = (
     { label: "Left", short: `${base}_L.jpg`, long: `${base}_Left.jpg` },
   ];
 
-  // 🧩 Logga alla genererade URL:er i en tabell
-  console.groupCollapsed("🖼️ Genererade bildlänkar för alla vinklar");
-  console.table(allViews);
-  console.groupEnd();
-
-  const filtered = allViews.filter((v) => selectedViews.includes(v.label));
-  console.log(`✅ Returnerar ${filtered.length} bilder (från ${selectedViews.length} valda vyer)`);
-
-  return filtered;
+  return allViews.filter((v) => selectedViews.includes(v.label));
 };
 
 /**
