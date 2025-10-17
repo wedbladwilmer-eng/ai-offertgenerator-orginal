@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { generatePDF } from "@/utils/pdfGenerator";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import logo from "@/assets/kosta-nada-profil-logo.png";
 import { useToast } from "@/hooks/use-toast";
 import { generateAngleImages, getViewLabelInSwedish } from "@/lib/generateAngleImages";
@@ -22,7 +22,6 @@ interface Product {
   image_url?: string;
   slug_name?: string;
   pictures?: Record<string, string>;
-  angle_images?: Record<string, string>;
   variations?: Array<{
     color: string;
     image_url: string;
@@ -33,14 +32,12 @@ interface Product {
 }
 
 const AngleImage: React.FC<{ url: string; label: string }> = ({ url, label }) => {
-  const [src, setSrc] = useState(url);
   const [hasError, setHasError] = useState(false);
-
   return (
     <div className="relative bg-gray-50 border rounded-lg overflow-hidden aspect-square">
       {!hasError ? (
         <img
-          src={src}
+          src={url}
           alt={label}
           onError={() => setHasError(true)}
           crossOrigin="anonymous"
@@ -62,7 +59,7 @@ const Quote: React.FC = () => {
   const location = useLocation();
   const { toast } = useToast();
 
-  // 🎯 Hämta produktdata direkt från navigate state
+  // 🧩 Data direkt från ProductDisplay
   const productData = location.state?.product;
   const selectedColorCode = location.state?.selectedColorCode;
   const selectedFolderId = location.state?.selectedFolderId;
@@ -70,58 +67,14 @@ const Quote: React.FC = () => {
   const currentImage = location.state?.currentImage;
   const currentVariation = location.state?.currentVariation;
 
-  const [product] = useState<Product | null>(productData || null);
   const [customerName, setCustomerName] = useState("");
   const [margin, setMargin] = useState("1.5");
   const [quantity, setQuantity] = useState(1);
 
-  // 🧠 Bildlogik - måste vara före early returns för hook-regler
-  const angleImages = useMemo(() => {
-    if (!product) return [];
-    
-    // 🎯 PRIO 1: Om vi har product.pictures från API:et, använd dessa först
-    if (product.pictures && Object.keys(product.pictures).length > 0) {
-      const viewMapping: Record<string, string> = {
-        "Front": product.pictures.front || "",
-        "Right": product.pictures.right || "",
-        "Back": product.pictures.back || "",
-        "Left": product.pictures.left || "",
-      };
-      
-      return selectedViews
-        .filter(view => viewMapping[view])
-        .map(view => ({ label: view, url: viewMapping[view] }));
-    }
-    
-    // 🎯 PRIO 2: Om vi har angle_images från API:et, använd dessa
-    if (product.angle_images && Object.keys(product.angle_images).length > 0) {
-      return Object.entries(product.angle_images)
-        .filter(([key]) => selectedViews.includes(key))
-        .map(([key, url]) => ({ label: key, url }));
-    }
-    
-    // 🎯 PRIO 3: Fallback till generateAngleImages
-    const folderId = selectedFolderId || product.folder_id || "";
-    const articleNumber = product.id || "";
-    const colorCode = selectedColorCode || product.colorCode || "";
-    const slug = product.slug_name || (product.name || "").replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
-    
-    console.log("✅ Parametrar till generateAngleImages:", { folderId, articleNumber, colorCode, slug, selectedViews });
-    
-    return generateAngleImages(folderId, articleNumber, colorCode, slug, selectedViews).map((img) => ({
-      label: img.label,
-      url: img.short,
-    }));
-  }, [product, selectedViews, selectedFolderId, selectedColorCode]);
-
-  // 🖼️ Huvudbild - prioritera front från angleImages, annars currentImage från state
-  const mainImage = angleImages.find((img) => img.label.toLowerCase() === "front")?.url || currentImage || product?.image_url || "";
-
-  if (!product) {
+  if (!productData) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <p className="text-lg font-semibold">Ingen produkt vald</p>
-        <p className="text-gray-600">Gå tillbaka till startsidan och välj en produkt.</p>
         <Button onClick={() => navigate("/")}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Tillbaka till startsidan
         </Button>
@@ -129,9 +82,35 @@ const Quote: React.FC = () => {
     );
   }
 
+  // 🧠 Bildlogik
+  const angleImages = useMemo(() => {
+    const folderId = selectedFolderId || productData.folder_id || "";
+    const articleNumber = productData.id || "";
+    const colorCode = selectedColorCode || productData.colorCode || "";
+    const slug =
+      productData.slug_name ||
+      (productData.name || "").replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
+
+    const all = generateAngleImages(folderId, articleNumber, colorCode, slug, selectedViews);
+    // ❌ Filtrera bort front för att undvika dubblett
+    return all.filter((a) => a.label !== "Front");
+  }, [productData, selectedFolderId, selectedColorCode, selectedViews]);
+
+  // 🖼️ Huvudbild (Front)
+  const mainImage =
+    currentImage ||
+    productData.image_url ||
+    generateAngleImages(
+      selectedFolderId || productData.folder_id || "",
+      productData.id,
+      selectedColorCode || productData.colorCode || "",
+      productData.slug_name || (productData.name || "").replace(/\s+/g, "")
+    ).find((img) => img.label === "Front")?.short ||
+    "";
+
   // 🧾 Pris
   const marginValue = parseFloat(margin);
-  const pricePerUnit = product.price_ex_vat * marginValue;
+  const pricePerUnit = productData.price_ex_vat * marginValue;
   const total = pricePerUnit * quantity;
   const totalWithVat = total * 1.25;
 
@@ -141,14 +120,13 @@ const Quote: React.FC = () => {
       toast({ title: "Fel", description: "Ange kundnamn", variant: "destructive" });
       return;
     }
-
     try {
       await generatePDF({
         companyName: "Kosta Nada Profil AB",
         customerName: customerName.trim(),
         quote: [
           {
-            product,
+            product: productData,
             quantity,
             mockup_url: mainImage,
             selectedViews,
@@ -171,8 +149,7 @@ const Quote: React.FC = () => {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate("/")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Tillbaka
+            <ArrowLeft className="mr-2 h-4 w-4" /> Tillbaka
           </Button>
           <img src={logo} alt="Kosta Nada" className="h-12" />
         </div>
@@ -220,25 +197,28 @@ const Quote: React.FC = () => {
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Bilder */}
               <div>
+                {/* Front-bild */}
                 <div className="bg-white border rounded-lg p-4 mb-4 flex justify-center">
                   {mainImage ? (
-                    <img src={mainImage} alt={product.name} className="max-h-[400px] w-auto object-contain rounded" />
+                    <img src={mainImage} alt={productData.name} className="max-h-[400px] w-auto object-contain rounded" />
                   ) : (
                     <div className="h-[400px] flex items-center justify-center text-gray-400">Ingen bild</div>
                   )}
                 </div>
 
-                {/* Vinkelbilder */}
+                {/* Vinklar (exkl. front) */}
                 {angleImages.length > 0 && (
                   <>
-                    <p className="text-sm text-gray-600 mb-2">Visar valda vinklar: {selectedViews.join(", ")}</p>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Visar valda vinklar: {angleImages.map((a) => a.label).join(", ")}
+                    </p>
                     <div
                       className={`grid gap-2 ${
                         angleImages.length === 1
                           ? "grid-cols-1"
                           : angleImages.length === 2
-                            ? "grid-cols-2"
-                            : "grid-cols-4"
+                          ? "grid-cols-2"
+                          : "grid-cols-3"
                       }`}
                     >
                       {angleImages.map((img) => (
@@ -252,16 +232,18 @@ const Quote: React.FC = () => {
               {/* Detaljer */}
               <div className="space-y-4">
                 <div>
-                  <h2 className="text-2xl font-bold">{product.name}</h2>
-                  <p className="text-sm text-gray-600">Artikelnummer: {product.id}</p>
-                  {product.category && <p className="text-sm text-gray-600">Kategori: {product.category}</p>}
+                  <h2 className="text-2xl font-bold">{productData.name}</h2>
+                  <p className="text-sm text-gray-600">Artikelnummer: {productData.id}</p>
+                  {productData.category && (
+                    <p className="text-sm text-gray-600">Kategori: {productData.category}</p>
+                  )}
                 </div>
 
                 <Separator />
 
                 <div>
                   <p className="text-sm text-gray-600">Grundpris (exkl. moms)</p>
-                  <p className="text-xl font-semibold">{product.price_ex_vat} kr</p>
+                  <p className="text-xl font-semibold">{productData.price_ex_vat} kr</p>
                 </div>
 
                 <div>
