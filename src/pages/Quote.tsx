@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,7 @@ interface Product {
   folder_id?: string;
   image_url?: string;
   slug_name?: string;
+  angle_images?: Record<string, string>;
 }
 
 // AngleImage component for handling fallback from short to long view suffix
@@ -153,32 +154,51 @@ const Quote: React.FC = () => {
     );
   }
 
-  // Build angle images using generateAngleImages function
-  const folderId = folderIdParam || product.folder_id || "";
-  const colorCode = colorCodeParam || product.colorCode || "";
-  const articleNumber = product.id || productId || "";
-  const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
-  
-  console.log("✅ Parametrar till generateAngleImages:", {
-    folderId,
-    articleNumber,
-    colorCode,
-    slug,
-    selectedViews,
-  });
-  
-  const angleImages = generateAngleImages(
-    folderId,
-    articleNumber,
-    colorCode,
-    slug,
-    selectedViews
-  );
+  // Use angle images from API if available, otherwise generate them
+  const angleImages = useMemo(() => {
+    // If product has angle_images from API, use those
+    if (product.angle_images && typeof product.angle_images === 'object') {
+      console.log("✅ Använder bilder från API:", product.angle_images);
+      
+      return selectedViews.map(view => ({
+        label: view as "Front" | "Right" | "Back" | "Left",
+        short: product.angle_images[view] || "",
+        long: product.angle_images[view] || ""
+      })).filter(img => img.short);
+    }
+    
+    // Fallback to generateAngleImages if no API images
+    const folderId = folderIdParam || product.folder_id || "";
+    const colorCode = colorCodeParam || product.colorCode || "";
+    const articleNumber = product.id || productId || "";
+    const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
+    
+    console.log("⚠️ Fallback till generateAngleImages:", {
+      folderId,
+      articleNumber,
+      colorCode,
+      slug,
+      selectedViews,
+    });
+    
+    return generateAngleImages(
+      folderId,
+      articleNumber,
+      colorCode,
+      slug,
+      selectedViews
+    );
+  }, [product, selectedViews, folderIdParam, colorCodeParam, productId, slugParam]);
   
   // Build main image URL
   const mainImage = angleImages.length > 0 
     ? angleImages[0].short.replace(/_[FRLB]\.jpg$/i, "_F.jpg")
     : product.image_url || "";
+
+  // Extract parameters for PDF generation
+  const folderId = folderIdParam || product.folder_id || "";
+  const colorCode = colorCodeParam || product.colorCode || "";
+  const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
 
   const handleConfirmColor = () => {
     setIsColorConfirmed(true);

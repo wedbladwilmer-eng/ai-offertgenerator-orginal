@@ -149,12 +149,37 @@ serve(async (req) => {
     const image_url = fileName ? buildImageUrl(fileName, ext) : null;
     console.info('🖼️ Final resolved image URL:', image_url);
     
+    // Extract all angle images with their full URLs
+    const angleImages: Record<string, string> = {};
+    if (product.pictures && product.pictures.length > 0) {
+      const angleMap: Record<string, string> = {
+        'front': 'Front',
+        'back': 'Back',
+        'left': 'Left',
+        'right': 'Right'
+      };
+      
+      product.pictures.forEach((pic: any) => {
+        if (pic.type === 'Productpicture' && pic.angle && angleMap[pic.angle.toLowerCase()]) {
+          const angle = angleMap[pic.angle.toLowerCase()];
+          const fullUrl = pic.fileName ? buildImageUrl(pic.fileName, pic.ext || 0) : null;
+          if (fullUrl) {
+            angleImages[angle] = fullUrl;
+            console.log(`🖼️ ${angle} image:`, fullUrl);
+          }
+        }
+      });
+    }
+    
+    console.log('🖼️ All angle images extracted:', angleImages);
+    
     const transformedProduct = {
       id: product.productNumber || product.id,
       name: product.productName || product.name,
       brand: product.productBrandName || product.brand,
       price_ex_vat: product.price?.retail?.num || product.price?.exVat?.num || null,
       image_url,
+      angle_images: angleImages,
       category: product.filters?.category?.[0] || product.category || '',
       slug: product.slug || '',
       variations: product.variations?.map((v: any) => ({ color: v.color || v.name })) || [],
