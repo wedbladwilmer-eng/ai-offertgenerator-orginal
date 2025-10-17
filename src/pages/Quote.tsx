@@ -22,48 +22,26 @@ interface Product {
   folder_id?: string;
   image_url?: string;
   slug_name?: string;
+  pictures?: Record<string, string>;
 }
 
-// AngleImage component for handling fallback from short to long view suffix
-const AngleImage: React.FC<{ shortUrl: string; longUrl: string; label: string }> = ({
-  shortUrl,
-  longUrl,
-  label,
-}) => {
-  const [src, setSrc] = useState(shortUrl);
+const AngleImage: React.FC<{ url: string; label: string }> = ({ url, label }) => {
+  const [src, setSrc] = useState(url);
   const [hasError, setHasError] = useState(false);
 
-  useEffect(() => {
-    if (!shortUrl) return;
-    setSrc(shortUrl);
-    setHasError(false);
-  }, [shortUrl]);
-
-  const handleError = () => {
-    if (src === shortUrl) {
-      setSrc(longUrl);
-    } else {
-      setHasError(true);
-    }
-  };
-
   return (
-    <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden border">
+    <div className="relative bg-gray-50 border rounded-lg overflow-hidden aspect-square">
       {!hasError ? (
         <img
           src={src}
           alt={label}
-          className="w-full h-full object-contain"
+          onError={() => setHasError(true)}
           crossOrigin="anonymous"
           referrerPolicy="no-referrer"
-          onError={handleError}
+          className="w-full h-full object-contain"
         />
       ) : (
-        <img
-          src="/placeholder.svg"
-          alt={label}
-          className="w-full h-full object-contain p-4 opacity-50"
-        />
+        <div className="w-full h-full flex items-center justify-center text-gray-400">Ingen bild</div>
       )}
       <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs py-1 text-center">
         {getViewLabelInSwedish(label)}
@@ -83,23 +61,16 @@ const Quote: React.FC = () => {
   const [margin, setMargin] = useState("1.5");
   const [quantity, setQuantity] = useState(1);
   const [isColorConfirmed, setIsColorConfirmed] = useState(false);
-  const [confirmedData, setConfirmedData] = useState<{
-    colorCode: string;
-    folderId: string;
-    imageUrl: string;
-  } | null>(null);
 
-  // Read URL parameters
+  // Läs parametrar
   const productId = searchParams.get("productId");
   const colorCodeParam = searchParams.get("colorCode");
   const folderIdParam = searchParams.get("folderId");
   const slugParam = searchParams.get("slug");
   const viewsParam = searchParams.get("views");
-  
-  // Parse selected views from URL or fallback to ["Front"]
-  const selectedViews = viewsParam 
-    ? JSON.parse(decodeURIComponent(viewsParam)) 
-    : ["Front"];
+
+  // Läs valda vinklar
+  const selectedViews = viewsParam ? JSON.parse(decodeURIComponent(viewsParam)) : ["Front"];
 
   useEffect(() => {
     if (!productId) {
@@ -117,7 +88,7 @@ const Quote: React.FC = () => {
 
         let productData: Product = data;
 
-        // Override with URL parameters if available
+        // Tvinga in färg och mapp från URL
         if (colorCodeParam) productData.colorCode = colorCodeParam;
         if (folderIdParam) productData.folder_id = folderIdParam;
         if (slugParam) productData.slug_name = slugParam;
@@ -136,7 +107,7 @@ const Quote: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-lg">Laddar produkt...</p>
+        <p>Laddar produkt...</p>
       </div>
     );
   }
@@ -144,100 +115,67 @@ const Quote: React.FC = () => {
   if (!product) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-lg">Produkt ej hittad</p>
+        <p>Produkt ej hittad</p>
         <Button onClick={() => navigate("/")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Tillbaka
+          <ArrowLeft className="mr-2 h-4 w-4" /> Tillbaka
         </Button>
       </div>
     );
   }
 
-  // Build angle images using generateAngleImages function
+  // 🧠 Bildlogik
   const folderId = folderIdParam || product.folder_id || "";
   const colorCode = colorCodeParam || product.colorCode || "";
-  const articleNumber = product.id || productId || "";
-  const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
-  
-  console.log("✅ Parametrar till generateAngleImages:", {
-    folderId,
-    articleNumber,
-    colorCode,
-    slug,
-    selectedViews,
-  });
-  
-  const angleImages = generateAngleImages(
-    folderId,
-    articleNumber,
-    colorCode,
-    slug,
-    selectedViews
-  );
-  
-  // Build main image URL
-  const mainImage = angleImages.length > 0 
-    ? angleImages[0].short.replace(/_[FRLB]\.jpg$/i, "_F.jpg")
-    : product.image_url || "";
+  const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "");
 
-  const handleConfirmColor = () => {
-    setIsColorConfirmed(true);
-    setConfirmedData({
-      colorCode: colorCode,
-      folderId: folderId,
-      imageUrl: mainImage,
-    });
-  };
+  // 🎨 Om product.pictures finns, använd dessa direkt
+  const angleImages = product.pictures
+    ? Object.entries(product.pictures)
+        .filter(([key]) => selectedViews.includes(key.charAt(0).toUpperCase() + key.slice(1)))
+        .map(([key, url]) => ({ label: key, url }))
+    : generateAngleImages(folderId, product.id, colorCode, slug, selectedViews).map((img) => ({
+        label: img.label,
+        url: img.short,
+      }));
 
-  const handleGeneratePDF = async () => {
-    if (!customerName.trim()) {
-      alert("Vänligen fyll i kundnamn");
-      return;
-    }
+  // 🖼️ Huvudbild
+  const mainImage = product.image_url || angleImages.find((img) => img.label.toLowerCase() === "front")?.url || "";
 
-    const marginValue = parseFloat(margin);
-    const pricePerUnit = product.price_ex_vat * marginValue;
-    const total = pricePerUnit * quantity;
-    const totalWithVat = total * 1.25;
-
-    const pdfData = {
-      companyName: "Kosta Nada",
-      customerName: customerName.trim(),
-      quote: [
-        {
-          product: {
-            ...product,
-            price_ex_vat: pricePerUnit,
-          },
-          quantity,
-          selectedViews: selectedViews,
-          mockup_url: confirmedData?.imageUrl || mainImage,
-        },
-      ],
-      total,
-      totalWithVat,
-      selectedViews: selectedViews,
-      folderId: folderId,
-      colorCode: colorCode,
-      slug: slug,
-    };
-
-    try {
-      await generatePDF(pdfData);
-      toast({
-        title: "PDF skapad!",
-        description: `PDF skapad med vyer: ${selectedViews.join(", ")}`,
-      });
-    } catch (err) {
-      console.error("Error generating PDF:", err);
-      alert("Fel vid generering av PDF");
-    }
-  };
-
+  // 🧾 Pris
   const marginValue = parseFloat(margin);
   const pricePerUnit = product.price_ex_vat * marginValue;
   const total = pricePerUnit * quantity;
   const totalWithVat = total * 1.25;
+
+  // 📄 Generera PDF
+  const handleGeneratePDF = async () => {
+    if (!customerName.trim()) {
+      toast({ title: "Fel", description: "Ange kundnamn", variant: "destructive" });
+      return;
+    }
+
+    try {
+      await generatePDF({
+        companyName: "Kosta Nada Profil AB",
+        customerName: customerName.trim(),
+        quote: [
+          {
+            product,
+            quantity,
+            mockup_url: mainImage,
+            selectedViews,
+          },
+        ],
+        total,
+        totalWithVat,
+        selectedViews,
+      });
+      toast({ title: "PDF skapad!", description: "Offerten laddas ner automatiskt." });
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      toast({ title: "Fel vid PDF-generering", variant: "destructive" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -251,9 +189,9 @@ const Quote: React.FC = () => {
           <img src={logo} alt="Kosta Nada" className="h-12" />
         </div>
 
-        <h1 className="text-3xl font-bold mb-8 text-center">Skapa offert</h1>
+        <h1 className="text-3xl font-bold mb-8 text-center">Offert</h1>
 
-        {/* Customer Info */}
+        {/* Kundinformation */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Kundinformation</CardTitle>
@@ -285,83 +223,50 @@ const Quote: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Product Information */}
+        {/* Produktinformation */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Produktinformation</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Left: Images */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Bilder */}
               <div>
-                {/* Main Image */}
-                <div className="mb-4 bg-white rounded-lg border p-4">
+                <div className="bg-white border rounded-lg p-4 mb-4 flex justify-center">
                   {mainImage ? (
-                    <img
-                      src={mainImage}
-                      alt={product.name}
-                      className="w-full h-auto max-h-[400px] object-contain rounded-lg"
-                    />
+                    <img src={mainImage} alt={product.name} className="max-h-[400px] w-auto object-contain rounded" />
                   ) : (
-                    <div className="w-full h-[400px] flex items-center justify-center text-gray-400">
-                      Ingen bild tillgänglig
-                    </div>
+                    <div className="h-[400px] flex items-center justify-center text-gray-400">Ingen bild</div>
                   )}
                 </div>
 
-                {/* Selected Angle Thumbnails */}
+                {/* Vinkelbilder */}
                 {angleImages.length > 0 && (
-                  <div>
-                    <p className="text-sm text-gray-600 mb-2">
-                      Visar valda vinklar: {selectedViews.join(", ")}
-                    </p>
-                    <div className={`grid gap-2 ${
-                      angleImages.length === 1 ? "grid-cols-1" : 
-                      angleImages.length === 2 ? "grid-cols-2" :
-                      "grid-cols-4"
-                    }`}>
+                  <>
+                    <p className="text-sm text-gray-600 mb-2">Visar valda vinklar: {selectedViews.join(", ")}</p>
+                    <div
+                      className={`grid gap-2 ${
+                        angleImages.length === 1
+                          ? "grid-cols-1"
+                          : angleImages.length === 2
+                            ? "grid-cols-2"
+                            : "grid-cols-4"
+                      }`}
+                    >
                       {angleImages.map((img) => (
-                        <AngleImage
-                          key={img.label}
-                          shortUrl={img.short}
-                          longUrl={img.long}
-                          label={img.label}
-                        />
+                        <AngleImage key={img.label} url={img.url} label={img.label} />
                       ))}
                     </div>
-                  </div>
+                  </>
                 )}
-
-                {/* Confirm Color Button */}
-                <Button
-                  onClick={handleConfirmColor}
-                  disabled={isColorConfirmed}
-                  className={`w-full mt-4 ${
-                    isColorConfirmed
-                      ? "bg-green-600 hover:bg-green-700"
-                      : "bg-blue-600 hover:bg-blue-700"
-                  }`}
-                  size="lg"
-                >
-                  {isColorConfirmed ? (
-                    <>
-                      <Check className="mr-2 h-5 w-5" />
-                      Färg bekräftad ✅
-                    </>
-                  ) : (
-                    "Bekräfta färg"
-                  )}
-                </Button>
               </div>
 
-              {/* Right: Product Details */}
+              {/* Detaljer */}
               <div className="space-y-4">
                 <div>
                   <h2 className="text-2xl font-bold">{product.name}</h2>
                   <p className="text-sm text-gray-600">Artikelnummer: {product.id}</p>
-                  {product.category && (
-                    <p className="text-sm text-gray-600">Kategori: {product.category}</p>
-                  )}
+                  {product.category && <p className="text-sm text-gray-600">Kategori: {product.category}</p>}
                 </div>
 
                 <Separator />
@@ -386,49 +291,39 @@ const Quote: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Pricing */}
+        {/* Prisinfo */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Prissättning</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2">
             <div className="flex justify-between">
-              <span>Pris per enhet (med marginal {margin}):</span>
+              <span>Pris/st (inkl. marginal):</span>
               <span className="font-semibold">{pricePerUnit.toFixed(2)} kr</span>
             </div>
             <div className="flex justify-between">
               <span>Antal:</span>
-              <span className="font-semibold">{quantity} st</span>
+              <span className="font-semibold">{quantity}</span>
             </div>
             <Separator />
             <div className="flex justify-between text-lg">
-              <span>Totalt (exkl. moms):</span>
-              <span className="font-bold">{total.toFixed(2)} kr</span>
-            </div>
-            <div className="flex justify-between text-lg">
-              <span>Totalt (inkl. moms):</span>
+              <span>Total (inkl. moms):</span>
               <span className="font-bold text-primary">{totalWithVat.toFixed(2)} kr</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Generate PDF Button */}
+        {/* Skapa PDF */}
         <div className="flex justify-center">
           <Button
             onClick={handleGeneratePDF}
-            disabled={!isColorConfirmed}
+            disabled={!customerName.trim()}
             size="lg"
-            className="px-8"
+            className="px-8 bg-blue-600 hover:bg-blue-700"
           >
             Ladda ner som PDF
           </Button>
         </div>
-
-        {!isColorConfirmed && (
-          <p className="text-center text-sm text-gray-500 mt-2">
-            Du måste bekräfta färgen innan du kan skapa PDF
-          </p>
-        )}
       </div>
     </div>
   );
