@@ -149,12 +149,35 @@ serve(async (req) => {
     const image_url = fileName ? buildImageUrl(fileName, ext) : null;
     console.info('🖼️ Final resolved image URL:', image_url);
     
+    // Extract all angle images from product.pictures
+    const angle_images: Record<string, string> = {};
+    if (product.pictures && Array.isArray(product.pictures)) {
+      const angleMap: Record<string, string> = {
+        'front': 'Front',
+        'back': 'Back',
+        'left': 'Left',
+        'right': 'Right'
+      };
+      
+      product.pictures
+        .filter((p: any) => p.type === 'Productpicture' && p.angle && p.fileName)
+        .forEach((p: any) => {
+          const angleName = angleMap[p.angle.toLowerCase()];
+          if (angleName) {
+            angle_images[angleName] = buildImageUrl(p.fileName, p.ext || 0);
+          }
+        });
+      
+      console.log('🎨 Extracted angle images:', Object.keys(angle_images));
+    }
+    
     const transformedProduct = {
       id: product.productNumber || product.id,
       name: product.productName || product.name,
       brand: product.productBrandName || product.brand,
       price_ex_vat: product.price?.retail?.num || product.price?.exVat?.num || null,
       image_url,
+      angle_images,
       category: product.filters?.category?.[0] || product.category || '',
       slug: product.slug || '',
       variations: product.variations?.map((v: any) => ({ color: v.color || v.name })) || [],

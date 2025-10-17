@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,7 @@ interface Product {
   image_url?: string;
   slug_name?: string;
   pictures?: Record<string, string>;
+  angle_images?: Record<string, string>;
 }
 
 const AngleImage: React.FC<{ url: string; label: string }> = ({ url, label }) => {
@@ -124,19 +125,24 @@ const Quote: React.FC = () => {
   }
 
   // 🧠 Bildlogik
-  const folderId = folderIdParam || product.folder_id || "";
-  const colorCode = colorCodeParam || product.colorCode || "";
-  const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "");
-
-  // 🎨 Om product.pictures finns, använd dessa direkt
-  const angleImages = product.pictures
-    ? Object.entries(product.pictures)
-        .filter(([key]) => selectedViews.includes(key.charAt(0).toUpperCase() + key.slice(1)))
-        .map(([key, url]) => ({ label: key, url }))
-    : generateAngleImages(folderId, product.id, colorCode, slug, selectedViews).map((img) => ({
-        label: img.label,
-        url: img.short,
-      }));
+  const angleImages = useMemo(() => {
+    // Om vi har angle_images från API:et, använd dessa
+    if (product.angle_images && Object.keys(product.angle_images).length > 0) {
+      return Object.entries(product.angle_images)
+        .filter(([key]) => selectedViews.includes(key))
+        .map(([key, url]) => ({ label: key, url }));
+    }
+    
+    // Annars fallback till generateAngleImages
+    const folderId = folderIdParam || product.folder_id || "";
+    const colorCode = colorCodeParam || product.colorCode || "";
+    const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "");
+    
+    return generateAngleImages(folderId, product.id, colorCode, slug, selectedViews).map((img) => ({
+      label: img.label,
+      url: img.short,
+    }));
+  }, [product, selectedViews, folderIdParam, colorCodeParam, slugParam]);
 
   // 🖼️ Huvudbild
   const mainImage = product.image_url || angleImages.find((img) => img.label.toLowerCase() === "front")?.url || "";
@@ -153,6 +159,11 @@ const Quote: React.FC = () => {
       toast({ title: "Fel", description: "Ange kundnamn", variant: "destructive" });
       return;
     }
+
+    // Define these again for the PDF generation scope
+    const folderId = folderIdParam || product.folder_id || "";
+    const colorCode = colorCodeParam || product.colorCode || "";
+    const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "");
 
     try {
       await generatePDF({
