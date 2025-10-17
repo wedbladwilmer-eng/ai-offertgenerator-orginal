@@ -105,27 +105,10 @@ const Quote: React.FC = () => {
     fetchProduct();
   }, [productId, colorCodeParam, folderIdParam, slugParam]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Laddar produkt...</p>
-      </div>
-    );
-  }
-
-  if (!product) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p>Produkt ej hittad</p>
-        <Button onClick={() => navigate("/")}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Tillbaka
-        </Button>
-      </div>
-    );
-  }
-
-  // 🧠 Bildlogik
+  // 🧠 Bildlogik - måste vara före early returns för hook-regler
   const angleImages = useMemo(() => {
+    if (!product) return [];
+    
     // Om vi har angle_images från API:et, använd dessa
     if (product.angle_images && Object.keys(product.angle_images).length > 0) {
       return Object.entries(product.angle_images)
@@ -144,8 +127,26 @@ const Quote: React.FC = () => {
     }));
   }, [product, selectedViews, folderIdParam, colorCodeParam, slugParam]);
 
-  // 🖼️ Huvudbild
-  const mainImage = product.image_url || angleImages.find((img) => img.label.toLowerCase() === "front")?.url || "";
+  const mainImage = product?.image_url || angleImages.find((img) => img.label.toLowerCase() === "front")?.url || "";
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Laddar produkt...</p>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+        <p>Produkt ej hittad</p>
+        <Button onClick={() => navigate("/")}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Tillbaka
+        </Button>
+      </div>
+    );
+  }
 
   // 🧾 Pris
   const marginValue = parseFloat(margin);
