@@ -81,8 +81,11 @@ const Quote: React.FC = () => {
 
     const fetchProduct = async () => {
       try {
+        // 🎨 Begär rätt färgvariant om colorCode finns
+        const requestedArticle = colorCodeParam ? `${productId}-${colorCodeParam}` : productId;
+        
         const { data, error } = await supabase.functions.invoke("new-wave-proxy", {
-          body: { articleNumber: productId },
+          body: { articleNumber: requestedArticle },
         });
 
         if (error) throw error;
@@ -109,25 +112,43 @@ const Quote: React.FC = () => {
   const angleImages = useMemo(() => {
     if (!product) return [];
     
-    // Om vi har angle_images från API:et, använd dessa
+    // 🎯 PRIO 1: Om vi har product.pictures från API:et, använd dessa först
+    if (product.pictures && Object.keys(product.pictures).length > 0) {
+      const viewMapping: Record<string, string> = {
+        "Front": product.pictures.front || "",
+        "Right": product.pictures.right || "",
+        "Back": product.pictures.back || "",
+        "Left": product.pictures.left || "",
+      };
+      
+      return selectedViews
+        .filter(view => viewMapping[view])
+        .map(view => ({ label: view, url: viewMapping[view] }));
+    }
+    
+    // 🎯 PRIO 2: Om vi har angle_images från API:et, använd dessa
     if (product.angle_images && Object.keys(product.angle_images).length > 0) {
       return Object.entries(product.angle_images)
         .filter(([key]) => selectedViews.includes(key))
         .map(([key, url]) => ({ label: key, url }));
     }
     
-    // Annars fallback till generateAngleImages
+    // 🎯 PRIO 3: Fallback till generateAngleImages
     const folderId = folderIdParam || product.folder_id || "";
+    const articleNumber = product.id || productId || "";
     const colorCode = colorCodeParam || product.colorCode || "";
-    const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "");
+    const slug = slugParam || product.slug_name || (product.name || "").replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
     
-    return generateAngleImages(folderId, product.id, colorCode, slug, selectedViews).map((img) => ({
+    console.log("✅ Parametrar till generateAngleImages:", { folderId, articleNumber, colorCode, slug, selectedViews });
+    
+    return generateAngleImages(folderId, articleNumber, colorCode, slug, selectedViews).map((img) => ({
       label: img.label,
       url: img.short,
     }));
-  }, [product, selectedViews, folderIdParam, colorCodeParam, slugParam]);
+  }, [product, selectedViews, folderIdParam, colorCodeParam, slugParam, productId]);
 
-  const mainImage = product?.image_url || angleImages.find((img) => img.label.toLowerCase() === "front")?.url || "";
+  // 🖼️ Huvudbild - prioritera front från angleImages
+  const mainImage = angleImages.find((img) => img.label.toLowerCase() === "front")?.url || product?.image_url || "";
 
   if (loading) {
     return (
